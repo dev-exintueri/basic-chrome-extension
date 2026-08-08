@@ -30,20 +30,24 @@ import { shown } from './errors.js';
  * properties do not. `setAttribute('value', ...)` sets an input's *default*
  * value -- once the user has typed, the attribute and the value the element
  * actually holds diverge, and the element ignores the attribute with no error.
- * The same is true of `checked`, of `selected`, and of a `<progress>`'s `value`.
- * A caller that needs the live value writes it:
+ * The same is true of a checkbox's `checked` and an option's `selected`, both of
+ * which carry a dirtiness flag. A caller that needs the live value writes it:
  *
  * ```js
  * const query = el('input', { type: 'text', id: 'q' });
  * query.value = state.query;              // the property, not the attribute
  * ```
  *
- * **Where this file can run.** In a document, and nowhere else. It calls
- * `document.createElement` at the first use, so importing it into `sw.js` is a
- * `ReferenceError` inside a service worker whose module graph then never
- * finishes evaluating -- a failure that presents as every later call to the
- * worker timing out with nothing logged anywhere. The six-tag vocabulary has no
- * tag for a realm, so it is said here.
+ * `<progress>` is **not** in that set: its `value` has no dirtiness flag and
+ * reflects the attribute, so `el('progress', { max: 100, value: 40 })` is enough.
+ *
+ * **Where this file can run.** In a document, and nowhere else. Nothing here
+ * touches `document` at module scope, so importing it into `sw.js` evaluates
+ * cleanly and the worker starts normally; the `ReferenceError` arrives at the
+ * first `el()` **call**, inside whatever handler made it, and surfaces as one
+ * rejected response rather than as a dead worker. That is the harder failure to
+ * trace, not the easier one. The six-tag vocabulary has no tag for a realm, so
+ * it is said here.
  */
 
 /**
@@ -51,20 +55,12 @@ import { shown } from './errors.js';
  * `cond && el(...)` is writable; anything else that is not text or a node is a
  * call-site mistake rather than an empty render.
  *
+ * A **number** is text, `0` included -- so guard with a boolean, never a count:
+ * `matches.length && el(...)` renders a bare `0` when there are none, while
+ * `matches.length > 0 && el(...)` renders nothing.
+ *
  * @typedef {string | number | Node | null | undefined | false} Child
  */
-
-/**
- * The two DOM *property* names whose HTML attributes are spelled differently.
- * `setAttribute` accepts both, lower-cases them, and yields an element that is
- * silently unstyled (`classname`) or a label bound to nothing (`htmlfor`). No
- * type checker sees it, because `props` is a bag of strings. Rejecting exactly
- * two names is cheap; growing this map is how the file becomes a framework.
- */
-const MISSPELLED = new Map([
-  ['className', 'class'],
-  ['htmlFor', 'for'],
-]);
 
 /**
  * Reject a container that is not an element, rather than rendering into nothing.
@@ -75,6 +71,10 @@ const MISSPELLED = new Map([
  * it is a decision that belongs to the Module that knows the landmark is
  * optional -- not to the function holding the only reference to the DOM.
  *
+ * `null` is named literally rather than through `shown()`, which reports it as
+ * `a object` -- and an absent landmark is exactly the case this message exists
+ * to diagnose.
+ *
  * @param {Element} container
  * @param {string} fn Name of the calling export, for the message.
  * @returns {Element}
@@ -82,7 +82,8 @@ const MISSPELLED = new Map([
  */
 function asElement(container, fn) {
   if (!(container instanceof Element)) {
-    throw new TypeError(`${fn}() needs an Element container, received ${shown(container)}.`);
+    const seen = container === null ? 'null' : shown(container);
+    throw new TypeError(`${fn}() needs an Element container, received ${seen}.`);
   }
   return container;
 }
@@ -95,38 +96,53 @@ function asElement(container, fn) {
  *
  * - `null`, `undefined`, `false` -- the attribute is **not set at all**.
  *   Absence and `""` are different claims in HTML: `hidden=""` hides.
+ * - a name starting with `on` -- an event binding, and the value **must** be a
+ *   function. A string there would be written as an inline handler, which an
+ *   extension page's content security policy drops without a word, so it is
+ *   rejected rather than accepted into a control that never responds. The name
+ *   is passed to `addEventListener` unchanged and must therefore be lower-case:
+ *   DOM event types are case-sensitive, so `onRowSelected` would bind something
+ *   no dispatcher ever sends. Bind a mixed-case custom event directly.
  * - `true` -- `name=""`, the boolean-attribute form. Note that `aria-*` are
  *   **not** boolean attributes: they take the literal strings `"true"` and
  *   `"false"`, which a caller writes as strings.
- * - a function -- bound with `addEventListener`. Written as an attribute it
- *   would be stringified into an inline handler, which an extension page's
- *   content security policy drops without a word.
+ * - an object -- rejected. `String({})` is `"[object Object]"`, so a style or
+ *   dataset object would produce a silently unstyled element.
  * - anything else -- `setAttribute(name, String(value))`.
  *
  * @param {Element} element
  * @param {string} name
  * @param {unknown} value
  * @returns {void}
- * @throws {TypeError} On a property spelling, or a function on a non-`on` name.
+ * @throws {TypeError} On a property spelling, a bad handler, or an object value.
  */
 function applyProp(element, name, value) {
-  const attribute = MISSPELLED.get(name);
-  if (attribute !== undefined) {
+  if (name === 'className' || name === 'htmlFor') {
+    const attribute = name === 'className' ? 'class' : 'for';
     throw new TypeError(`el() takes the attribute "${attribute}", not the property "${name}".`);
   }
   if (value === null || value === undefined || value === false) {
     return;
   }
-  if (typeof value === 'function') {
-    if (!/^on[a-z]/i.test(name)) {
-      throw new TypeError(`el() binds a function only on an on<event> name, received "${name}".`);
+  if (/^on[a-z]/i.test(name)) {
+    if (typeof value !== 'function') {
+      throw new TypeError(`el() needs a function for "${name}", received ${shown(value)}.`);
     }
-    element.addEventListener(name.slice(2).toLowerCase(), /** @type {EventListener} */ (value));
+    if (!/^on[a-z][a-z0-9]*$/.test(name)) {
+      throw new TypeError(`el() passes "${name}" to addEventListener as written; use a lower-case event name.`);
+    }
+    element.addEventListener(name.slice(2), /** @type {EventListener} */ (value));
     return;
+  }
+  if (typeof value === 'function') {
+    throw new TypeError(`el() binds a function only on an on<event> name, received "${name}".`);
   }
   if (value === true) {
     element.setAttribute(name, '');
     return;
+  }
+  if (typeof value === 'object') {
+    throw new TypeError(`el() cannot write "${name}" from ${shown(value)}; an attribute is text.`);
   }
   element.setAttribute(name, String(value));
 }
@@ -178,6 +194,9 @@ function appendChildren(element, children) {
  * @param {Child | Child[]} [children]
  * @returns {HTMLElement}
  * @throws {TypeError} On a bad tag, a bad prop, or a child that is not text or a node.
+ * @throws {DOMException} `document.createElement` and `setAttribute` reject a
+ *   name HTML does not allow -- `el('my tag')`, `el('div', {'data key': 1})` --
+ *   and those messages name the offending token themselves.
  */
 export function el(tag, props, children) {
   if (typeof tag !== 'string' || tag.length === 0) {
@@ -185,8 +204,13 @@ export function el(tag, props, children) {
   }
   const element = document.createElement(tag);
   if (props !== null && props !== undefined) {
-    if (typeof props !== 'object') {
-      throw new TypeError(`el() needs an object of props, received ${shown(props)}.`);
+    // A plain object, and nothing else. A node or an array reaching `props` is
+    // the omitted-props slip -- `el('li', el('span', null, text))` -- and both
+    // pass a `typeof` test while `Object.entries` finds no keys on them, so the
+    // child would be dropped and an empty element returned with no error.
+    const proto = typeof props === 'object' ? Object.getPrototypeOf(props) : undefined;
+    if (proto !== Object.prototype && proto !== null) {
+      throw new TypeError('el() takes props as a plain object; a node or a list belongs in the third argument.');
     }
     for (const [name, value] of Object.entries(props)) {
       applyProp(element, name, value);
@@ -208,8 +232,12 @@ export function el(tag, props, children) {
  * after the re-render that threw away the node it was holding:
  *
  * ```js
- * container.querySelector(`[data-key="${key}"]`)?.scrollIntoView();
+ * container.querySelector(`[data-key=${CSS.escape(key)}]`)?.scrollIntoView();
  * ```
+ *
+ * `CSS.escape` is not decoration: a key taken from page text can hold a quote or
+ * a bracket, and an unescaped one either raises `SyntaxError` or matches a
+ * different row.
  *
  * A duplicate key is rejected, because two rows nothing can tell apart is a
  * selection that lands on either one and a scroll that lands on the wrong match.
@@ -229,10 +257,14 @@ export function el(tag, props, children) {
  * @param {(item: T, index: number) => string | number} keyOf Stable, unique per item.
  * @param {(item: T, index: number) => Element} renderItem Returns the row's root element.
  * @returns {void}
- * @throws {TypeError} On a bad argument, an empty key, a duplicate key, or a non-element row.
+ * @throws {TypeError} On a bad argument, an unusable or duplicate key, a
+ *   non-element row, a row returned twice, or a row whose own `data-key` differs.
  */
 export function list(container, items, keyOf, renderItem) {
   const root = asElement(container, 'list');
+  if (typeof items === 'string') {
+    throw new TypeError('list() takes a collection of items; a string iterates per character.');
+  }
   if (typeof (/** @type {any} */ (items)?.[Symbol.iterator]) !== 'function') {
     throw new TypeError(`list() needs an iterable of items, received ${shown(items)}.`);
   }
@@ -243,11 +275,26 @@ export function list(container, items, keyOf, renderItem) {
     throw new TypeError(`list() needs a renderItem function, received ${shown(renderItem)}.`);
   }
 
-  const rows = [];
+  // Rows land in a fragment, not in the container, so the container is untouched
+  // until the last line: a throw anywhere below leaves the previous render
+  // standing. One argument rather than a spread of rows also means no list is
+  // large enough to exhaust the call's argument limit.
+  const fragment = document.createDocumentFragment();
   const seen = new Set();
+  const returned = new Set();
   let index = 0;
   for (const item of items) {
-    const key = String(keyOf(item, index));
+    const raw = keyOf(item, index);
+    // Coercion is where a key goes silently wrong: String(undefined) is the
+    // nine-character key "undefined", which passes every emptiness test and then
+    // matches a lookup nobody meant to write.
+    if (typeof raw !== 'string' && typeof raw !== 'number') {
+      throw new TypeError(`list() needs a string or number key, item ${index} produced ${shown(raw)}.`);
+    }
+    if (typeof raw === 'number' && !Number.isFinite(raw)) {
+      throw new TypeError(`list() needs a finite key, item ${index} produced ${raw}.`);
+    }
+    const key = String(raw);
     if (key.length === 0) {
       throw new TypeError(`list() needs a non-empty key, item ${index} produced an empty one.`);
     }
@@ -255,15 +302,27 @@ export function list(container, items, keyOf, renderItem) {
       throw new TypeError(`list() received the duplicate key "${key}" at item ${index}.`);
     }
     seen.add(key);
+
     const row = renderItem(item, index);
     if (!(row instanceof Element)) {
       throw new TypeError(`list() needs an Element per item, item ${index} produced ${shown(row)}.`);
     }
+    // One node cannot be two rows: appending it twice moves it, so the list
+    // would render fewer rows than it has items and say nothing.
+    if (returned.has(row)) {
+      throw new TypeError(`list() received one element for two items, again at item ${index}.`);
+    }
+    returned.add(row);
+
+    const own = row.getAttribute('data-key');
+    if (own !== null && own !== key) {
+      throw new TypeError(`list() would overwrite data-key "${own}" with "${key}" at item ${index}.`);
+    }
     row.setAttribute('data-key', key);
-    rows.push(row);
+    fragment.append(row);
     index += 1;
   }
-  root.replaceChildren(...rows);
+  root.replaceChildren(fragment);
 }
 
 /**
