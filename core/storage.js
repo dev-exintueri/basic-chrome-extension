@@ -385,7 +385,13 @@ export function subscribe(area, key, fn) {
     if (changedArea !== area) return;
     const change = changes[key];
     if (change === undefined) return;
-    fn(change.newValue);
+    try {
+      fn(change.newValue);
+    } catch {
+      // A subscriber that throws must not escape into Chrome's own event
+      // dispatch, where it arrives detached from the subscription that caused
+      // it. core/messaging.js protects its tracer for the same reason.
+    }
   };
 
   changed.addListener(listener);

@@ -1,7 +1,7 @@
 // @ts-check
 /**
  * @tier required
- * @chrome-min 102
+ * @chrome-min baseline
  * @permissions none
  * @pitfall The worker is terminated after roughly 30 s idle and in-memory state vanishes.
  * @alternative A keepalive ping loop -- battery drain and Web Store rejection risk.
