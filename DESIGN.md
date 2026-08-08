@@ -453,11 +453,11 @@ Step 4 is the honest cost of NFR-3. There is no registry, no auto-discovery, no 
 
 **NFR-4 requires every applicable pitfall below to appear as a `@pitfall` line in the relevant Module's Annotation Block.** That obligation is stated here rather than in a planning artifact because a Consuming Agent receives this repository and nothing else — a conformance rule pinned to a document the audience never sees cannot be conformed to.
 
-These are the sixteen known failure modes that **produce a wrong result without raising an error**. That is the entire admission criterion. A crash, a rejected promise, or a red console line is not a pitfall — it announces itself. Everything below returns something that looks fine.
+These are the eighteen known failure modes that **produce a wrong result without raising an error**. That is the entire admission criterion. A crash, a rejected promise, or a red console line is not a pitfall — it announces itself. Everything below returns something that looks fine.
 
 Two standing rules:
 
-- **The register is a floor, not a ceiling.** A Module that discovers a seventeenth annotates it and adds it here. Whether a file has annotated every silent failure it actually has is a **review obligation on the maintainer** — no regex can know what a file forgot to warn about.
+- **The register is a floor, not a ceiling.** A Module that discovers a new one annotates it and adds it here. Whether a file has annotated every silent failure it actually has is a **review obligation on the maintainer** — no regex can know what a file forgot to warn about.
 - **A pitfall states the mechanism, not the fix.** The fix is the code directly below the block.
 
 ### Service worker and messaging
@@ -467,6 +467,7 @@ Two standing rules:
 | Async message handler without the continuation signal | Port closes immediately; the response is lost |
 | Assuming the service worker persists | Terminated after ~30 s idle; in-memory state vanishes |
 | Keepalive ping loops | Battery drain and Web Store rejection risk |
+| Tracing the log action itself | The tracer logs, which sends the log action again; the channel and the buffer flood |
 
 ### Storage, configuration, and secrets
 
@@ -496,7 +497,13 @@ Two standing rules:
 | Relaying arbitrary URLs to the service worker | Turns the extension into an open proxy |
 | Malformed enterprise policy schema | Chrome refuses to load the entire extension |
 
-*Provenance: PRD `addendum.md` §C. The addendum remains the reasoning record; this section is the normative copy, and the two must not diverge.*
+### Failure reporting
+
+| Pitfall | Consequence |
+|---|---|
+| An error code outside the closed set reaching a banner | Renders as a label nobody defined |
+
+*Provenance: PRD `addendum.md` §C contributed the original sixteen. The addendum remains the reasoning record for those, and the two must not diverge. Entries beyond the sixteen were discovered by the Modules that guard them under the floor-not-ceiling rule above, and originate here rather than in the addendum: the log-tracing recursion in `core/messaging.js`, and the unrecognised error code in `core/errors.js`.*
 
 ## Tier Criteria
 
