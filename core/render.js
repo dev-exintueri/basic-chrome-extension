@@ -63,7 +63,8 @@ import { shown } from './errors.js';
  */
 
 /**
- * Reject a container that is not an element, rather than rendering into nothing.
+ * Reject a container nothing can be rendered into, rather than rendering into
+ * nothing.
  *
  * A no-op on an absent container is the failure this repository exists to
  * remove: the view reports success, the panel stays empty, and no error is
@@ -71,19 +72,28 @@ import { shown } from './errors.js';
  * it is a decision that belongs to the Module that knows the landmark is
  * optional -- not to the function holding the only reference to the DOM.
  *
+ * **The test is `nodeType`, not `instanceof`.** An element is `1` and a document
+ * fragment is `11` -- which is what a shadow root is -- and both hold children.
+ * `instanceof` would additionally reject a node from another realm: an options
+ * page rendering into an iframe's document produces elements built by *that*
+ * realm's constructors, which are valid containers that fail every `instanceof
+ * Element` in this one. A document (`9`) is not accepted: replacing its children
+ * is not a thing a view does.
+ *
  * `null` is named literally rather than through `shown()`, which reports it as
  * `a object` -- and an absent landmark is exactly the case this message exists
  * to diagnose.
  *
- * @param {Element} container
+ * @param {Element | DocumentFragment} container
  * @param {string} fn Name of the calling export, for the message.
- * @returns {Element}
- * @throws {TypeError} If `container` is not an `Element`.
+ * @returns {Element | DocumentFragment}
+ * @throws {TypeError} If `container` cannot hold children.
  */
-function asElement(container, fn) {
-  if (!(container instanceof Element)) {
+function asContainer(container, fn) {
+  const nodeType = /** @type {any} */ (container)?.nodeType;
+  if (nodeType !== 1 && nodeType !== 11) {
     const seen = container === null ? 'null' : shown(container);
-    throw new TypeError(`${fn}() needs an Element container, received ${seen}.`);
+    throw new TypeError(`${fn}() needs an element or fragment container, received ${seen}.`);
   }
   return container;
 }
@@ -165,8 +175,12 @@ function appendChildren(element, children) {
     if (child === null || child === undefined || child === false) {
       continue;
     }
-    if (child instanceof Node) {
-      element.append(child);
+    // Duck-typed for the same reason as the container: a node built by another
+    // realm's document is still a node.
+    if (typeof (/** @type {any} */ (child)?.nodeType) === 'number') {
+      // The cast is what duck-typing costs: `nodeType` tells the runtime this is
+      // a node, and tells the checker nothing.
+      element.append(/** @type {Node} */ (child));
       continue;
     }
     if (typeof child === 'string' || typeof child === 'number') {
@@ -252,7 +266,7 @@ export function el(tag, props, children) {
  * container, and a duplicate key is caught before anything is mutated.
  *
  * @template T
- * @param {Element} container Emptied and refilled. Must exist.
+ * @param {Element | DocumentFragment} container Emptied and refilled. Must exist.
  * @param {Iterable<T>} items
  * @param {(item: T, index: number) => string | number} keyOf Stable, unique per item.
  * @param {(item: T, index: number) => Element} renderItem Returns the row's root element.
@@ -261,7 +275,7 @@ export function el(tag, props, children) {
  *   non-element row, a row returned twice, or a row whose own `data-key` differs.
  */
 export function list(container, items, keyOf, renderItem) {
-  const root = asElement(container, 'list');
+  const root = asContainer(container, 'list');
   if (typeof items === 'string') {
     throw new TypeError('list() takes a collection of items; a string iterates per character.');
   }
@@ -304,7 +318,7 @@ export function list(container, items, keyOf, renderItem) {
     seen.add(key);
 
     const row = renderItem(item, index);
-    if (!(row instanceof Element)) {
+    if (/** @type {any} */ (row)?.nodeType !== 1) {
       throw new TypeError(`list() needs an Element per item, item ${index} produced ${shown(row)}.`);
     }
     // One node cannot be two rows: appending it twice moves it, so the list
@@ -328,10 +342,10 @@ export function list(container, items, keyOf, renderItem) {
 /**
  * Remove every child of `container`. Idempotent.
  *
- * @param {Element} container
+ * @param {Element | DocumentFragment} container
  * @returns {void}
- * @throws {TypeError} If `container` is not an `Element`.
+ * @throws {TypeError} If `container` cannot hold children.
  */
 export function clear(container) {
-  asElement(container, 'clear').replaceChildren();
+  asContainer(container, 'clear').replaceChildren();
 }
