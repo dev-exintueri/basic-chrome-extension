@@ -3,7 +3,7 @@ name: Neutral Instrument
 description: The repository constitution for the Chrome Extension MV3 Reference Starter Repo — the annotation vocabulary, surface responsibility model, tier criteria, and visual system every Module conforms to.
 status: final
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-09
 colors:
   # Light. Every value below is the literal used in CSS custom properties on :root.
   surface: '#FFFFFF'
@@ -455,7 +455,7 @@ Step 4 is the honest cost of NFR-3. There is no registry, no auto-discovery, no 
 
 **NFR-4 requires every applicable pitfall below to appear as a `@pitfall` line in the relevant Module's Annotation Block.** That obligation is stated here rather than in a planning artifact because a Consuming Agent receives this repository and nothing else — a conformance rule pinned to a document the audience never sees cannot be conformed to.
 
-These are the twenty known failure modes that **produce a wrong result without raising an error**. That is the entire admission criterion. A crash, a rejected promise, or a red console line is not a pitfall — it announces itself. Everything below returns something that looks fine.
+These are the twenty-two known failure modes that **produce a wrong result without raising an error**. That is the entire admission criterion. A crash, a rejected promise, or a red console line is not a pitfall — it announces itself. Everything below returns something that looks fine.
 
 Two standing rules:
 
@@ -493,6 +493,13 @@ Two standing rules:
 | Plain value assignment on a framework-controlled input | Silently ignored or reverted on next render |
 | Reusing the input value setter for a textarea | Different prototype |
 
+### Rendering a view
+
+| Pitfall | Consequence |
+|---|---|
+| A full keyed re-render of a list | Every row is replaced, so focus and selection inside the list are lost |
+| Setting a live control's value with `setAttribute` | Sets the *default* value; once the user has typed, the element ignores the attribute — the same for a checkbox's `checked` and an option's `selected` |
+
 ### Privilege boundaries and policy
 
 | Pitfall | Consequence |
@@ -507,7 +514,9 @@ Two standing rules:
 |---|---|
 | An error code outside the closed set reaching a banner | Renders as a label nobody defined |
 
-*Provenance: PRD `addendum.md` §C contributed the original sixteen. The addendum remains the reasoning record for those, and the two must not diverge. Entries beyond the sixteen were discovered by the Modules that guard them under the floor-not-ceiling rule above, and originate here rather than in the addendum: the log-tracing recursion in `core/messaging.js`, the unrecognised error code in `core/errors.js`, the silent reshaping of an unserialisable value in `core/storage.js`, and the two-writer collection rewrite in `core/logger.js`. The last two were found by measuring Chrome rather than by reading it, and each shipped as a `@pitfall` one story before it could be recorded here.*
+*Provenance: PRD `addendum.md` §C contributed the original sixteen. The addendum remains the reasoning record for those, and the two must not diverge. Entries beyond the sixteen were discovered by the Modules that guard them under the floor-not-ceiling rule above, and originate here rather than in the addendum: the log-tracing recursion in `core/messaging.js`, the unrecognised error code in `core/errors.js`, the silent reshaping of an unserialisable value in `core/storage.js`, the two-writer collection rewrite in `core/logger.js`, and the two rendering entries from `core/render.js`. Several were found by measuring Chrome rather than by reading it, and each shipped as a `@pitfall` one story before it could be recorded here.*
+
+*The rendering pair is the first entry where the register carries **more than the file's block can**. An Annotation Block permits one `@pitfall` line, and `core/render.js` has two applicable failures: the re-render one is on its tag, because it is the mechanism its `@scales-to` ceiling is measured from; the `setAttribute` one travels in that file's JSDoc prose until `core/AGENTS.md` exists to hold the overflow. Both are normative here regardless of where the file carries them.*
 
 ## Tier Criteria
 
