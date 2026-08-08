@@ -4,5 +4,9 @@
   "version": "0.1.0",
   "description": "A Manifest V3 reference extension whose Modules are built to be lifted out one folder at a time.",
   "minimum_chrome_version": "116",
-  "permissions": ["storage"]
+  "permissions": ["storage"],
+  "background": {
+    "service_worker": "sw.js",
+    "type": "module"
+  }
 }

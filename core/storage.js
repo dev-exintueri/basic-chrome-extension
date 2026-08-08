@@ -339,3 +339,55 @@ export function remove(area, key) {
     return { ok: true };
   });
 }
+
+/**
+ * Watch one key in one area and call `fn` whenever its stored value changes.
+ *
+ * Propagation in this repository is `chrome.storage.onChanged` and never
+ * polling, and the subscription lives here rather than in each consumer for the
+ * same reason `chrome.runtime.onMessage` lives in one file: `chrome.storage` is
+ * reached through this module alone. A Module that only wants to notice a
+ * changed value therefore still declares `@permissions none` -- it calls this
+ * file, not the API.
+ *
+ * `fn` receives the new value, and `undefined` when the key was removed. The
+ * two are distinguishable because `set()` refuses `undefined` outright, so a
+ * stored value is never `undefined` and the absence can mean nothing else.
+ *
+ * Unlike `chrome.runtime.onMessage` there is no one-door rule here: multiple
+ * listeners are legal and each subscription is independent.
+ *
+ * Where `chrome.storage.onChanged` is absent -- outside an extension Surface,
+ * or with no storage permission -- nothing is subscribed and the returned
+ * function is still callable, so a caller needs no second code path.
+ *
+ * @param {Area} area One of `AREAS`.
+ * @param {string} key `<owner>:<key>`.
+ * @param {(value: unknown) => void} fn Called with the new value, `undefined` if removed.
+ * @returns {() => void} Stops this subscription.
+ * @throws {TypeError} Synchronously, if the grammar is wrong or `fn` is not a function.
+ */
+export function subscribe(area, key, fn) {
+  assertArea(area);
+  assertKey(key);
+  if (typeof fn !== 'function') {
+    throw new TypeError(`Subscriber for "${key}" must be a function, received ${shown(fn)}.`);
+  }
+
+  const changed = typeof chrome === 'undefined' ? undefined : chrome.storage?.onChanged;
+  if (changed === undefined) return () => {};
+
+  /**
+   * @param {Record<string, chrome.storage.StorageChange>} changes
+   * @param {string} changedArea
+   */
+  const listener = (changes, changedArea) => {
+    if (changedArea !== area) return;
+    const change = changes[key];
+    if (change === undefined) return;
+    fn(change.newValue);
+  };
+
+  changed.addListener(listener);
+  return () => changed.removeListener(listener);
+}
