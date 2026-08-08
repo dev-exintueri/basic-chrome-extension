@@ -1,0 +1,10 @@
+{
+  "name": "basic-chrome-extension",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "1.62.1",
+    "chrome-types": "0.1.438"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "manifest_version": 3,
+  "name": "basic-chrome-extension",
+  "version": "0.1.0",
+  "description": "A Manifest V3 reference extension whose Modules are built to be lifted out one folder at a time.",
+  "minimum_chrome_version": "116"
+}

@@ -1,0 +1,7 @@
+node_modules/
+
+# Chrome reserves filenames beginning with "_" in an unpacked extension and
+# refuses to load a directory containing them. These are tool-owned working
+# directories, not repository content.
+_bmad/
+_bmad-output/
