@@ -47,7 +47,8 @@ const ACTION_PATTERN = /^[a-z][a-z0-9-]*\/[a-z][a-z0-9-]*$/;
 const LOG_ACTION = 'core/log';
 
 const NO_MESSAGING = 'Extension messaging is not available here. It works only inside an extension Surface.';
-const NO_RECEIVER = 'No Surface is listening for this action. Open the Surface that handles it and try again.';
+const NO_ANSWER = 'No Surface answered this action. It is answered only while a Surface that registers it is loaded.';
+const UNSENDABLE = 'The request could not be serialised for transport. A payload carries JSON-safe values only.';
 const MALFORMED = 'The response did not match the message envelope. Reload the extension and try again.';
 const HANDLER_FAILED = 'The action did not complete. Try again.';
 
@@ -140,7 +141,12 @@ function assertSurface(from) {
  */
 function record(entry) {
   try {
-    tracer(entry);
+    const settling = tracer(entry);
+    // A recorder that writes to storage returns a promise, and a rejected one
+    // would surface as an unhandled rejection per traced message.
+    if (settling !== undefined && typeof (/** @type {any} */ (settling).then) === 'function') {
+      /** @type {Promise<unknown>} */ (settling).catch(() => {});
+    }
   } catch {
     // Nothing to report it to: the reporter is what broke.
   }
@@ -162,17 +168,27 @@ function normalise(value) {
     return { ok: false, error: value.error };
   }
   if (value === undefined) {
-    return { ok: false, error: makeError('unavailable', NO_RECEIVER) };
+    return { ok: false, error: makeError('unavailable', NO_ANSWER) };
   }
   return { ok: false, error: makeError('failed', MALFORMED, value) };
 }
 
 /**
+ * Turn whatever a handler threw into a value that survives the wire.
+ *
+ * A structured error is rebuilt rather than forwarded: an `Error` carrying a
+ * `code` satisfies the guard, because `message` is an own property, and then
+ * loses that message to `JSON.stringify`, because it is a non-enumerable one.
+ * The receiver would reject the messageless result as malformed and report
+ * `failed` instead of the code the handler chose.
+ *
  * @param {unknown} thrown
  * @returns {StructuredError}
  */
 function toStructuredError(thrown) {
-  return isStructuredError(thrown) ? thrown : makeError('failed', HANDLER_FAILED, thrown);
+  return isStructuredError(thrown)
+    ? makeError(/** @type {never} */ (thrown.code), thrown.message, thrown.cause)
+    : makeError('failed', HANDLER_FAILED, thrown);
 }
 
 /**
@@ -199,48 +215,60 @@ function listener(message, _sender, sendResponse) {
     .catch((thrown) => ({ ok: false, error: toStructuredError(thrown) }))
     .then(sendResponse)
     .catch(() => {
-      // The caller's context went away before the response arrived. The hang is
-      // already visible to it as a request with no response.
+      // sendResponse throws when the reply will not serialise, and when the
+      // caller's context is already gone. Chrome rejects the caller's own
+      // promise in both cases, so there is nothing left to report from here.
     });
   return true;
 }
 
 /**
- * Send a named request to whichever Surface registered a handler for it, and
- * resolve with a response. This never rejects and never throws across a Surface
- * boundary: a missing receiver, a thrown handler, and a malformed reply all
- * arrive as `{ ok:false, error }`.
+ * Put one envelope on the wire and reduce whatever comes back to a response.
  *
- * An invalid action name or surface throws instead, because neither can be
- * produced by a user, a page, or a network -- they mean the calling code is
- * wrong, and absorbing one would let a typo ship as a banner.
+ * Chrome fails this in two different places. It throws **synchronously** when
+ * it cannot serialise the payload, which is a fault in the calling code, and it
+ * **rejects** when no answer comes back at all -- no receiver, a context
+ * invalidated by a reload, or a responder whose own reply would not serialise.
+ * Reported through one code they would send every diagnosis to the wrong place.
  *
- * @param {string} action `<module>/<verb>`, both kebab-case.
- * @param {unknown} payload Anything JSON-serialisable; `undefined` becomes `null`.
- * @param {Surface} from The Surface making the call.
+ * @param {string} action
+ * @param {unknown} payload
+ * @param {Meta} meta
  * @returns {Promise<Response>}
- * @throws {TypeError} If `action` or `from` is outside its set.
  */
-export async function request(action, payload, from) {
-  assertAction(action);
-  assertSurface(from);
+async function deliver(action, payload, meta) {
+  if (typeof chrome === 'undefined' || typeof chrome.runtime?.sendMessage !== 'function') {
+    return { ok: false, error: makeError('unavailable', NO_MESSAGING) };
+  }
 
+  /** @type {Promise<unknown>} */
+  let pending;
+  try {
+    pending = chrome.runtime.sendMessage({ action, payload: payload ?? null, meta });
+  } catch (thrown) {
+    return { ok: false, error: makeError('failed', UNSENDABLE, thrown) };
+  }
+
+  try {
+    return normalise(await pending);
+  } catch (thrown) {
+    return { ok: false, error: makeError('unavailable', NO_ANSWER, thrown) };
+  }
+}
+
+/**
+ * @param {string} action
+ * @param {unknown} payload
+ * @param {Surface} from
+ * @returns {Promise<Response>}
+ */
+async function exchange(action, payload, from) {
   /** @type {Meta} */
   const meta = { id: crypto.randomUUID(), from, t: Date.now() };
   const traced = action !== LOG_ACTION;
   if (traced) record({ direction: 'req', action, id: meta.id, from, t: meta.t });
 
-  /** @type {Response} */
-  let response;
-  if (typeof chrome === 'undefined' || typeof chrome.runtime?.sendMessage !== 'function') {
-    response = { ok: false, error: makeError('unavailable', NO_MESSAGING) };
-  } else {
-    try {
-      response = normalise(await chrome.runtime.sendMessage({ action, payload: payload ?? null, meta }));
-    } catch (thrown) {
-      response = { ok: false, error: makeError('unavailable', NO_RECEIVER, thrown) };
-    }
-  }
+  const response = await deliver(action, payload, meta);
 
   if (traced) {
     /** @type {TraceEntry} */
@@ -252,6 +280,35 @@ export async function request(action, payload, from) {
 }
 
 /**
+ * Send a named request to whichever Surface registered a handler for it, and
+ * resolve with a response. This never rejects and never throws across a Surface
+ * boundary: a missing answer, a thrown handler, an unsendable payload, and a
+ * malformed reply all arrive as `{ ok:false, error }`.
+ *
+ * The three conditions below throw **synchronously**, before anything is sent,
+ * because none can be produced by a user, a page, or a network -- they mean the
+ * calling code is wrong. A rejection would let an unawaited call fail into the
+ * console instead of at the call site, which is where a typo has to surface.
+ *
+ * @param {string} action `<module>/<verb>`, both kebab-case.
+ * @param {unknown} payload Anything JSON-serialisable; `undefined` becomes `null`.
+ * @param {Surface} from The Surface making the call.
+ * @returns {Promise<Response>}
+ * @throws {TypeError} If `action` or `from` is outside its set, or if this
+ *   Surface is the one that registered the handler.
+ */
+export function request(action, payload, from) {
+  assertAction(action);
+  assertSurface(from);
+  if (handlers.has(action)) {
+    throw new TypeError(
+      `This Surface registered the handler for "${action}", and a message never reaches its own sender. Call the handler directly.`,
+    );
+  }
+  return exchange(action, payload, from);
+}
+
+/**
  * Register the one handler for an action. Called by hand from a composition
  * root, one verbatim line per action -- there is no discovery, no registry
  * scan, and no broker.
@@ -259,10 +316,19 @@ export async function request(action, payload, from) {
  * The handler returns its data. To fail with a particular code it throws a
  * value `makeError` built; anything else it throws becomes `failed`.
  *
+ * **Call this during a composition root's synchronous top-level evaluation.**
+ * A service worker is only woken for an event whose listener was attached while
+ * its script first ran, so registering after an `await` works until the worker
+ * is terminated and then stops waking it at all.
+ *
+ * The duplicate check below sees this Surface only. Two Surfaces registering
+ * one action both run their handler and Chrome keeps whichever replied first,
+ * so an action belongs to exactly one Surface by convention, not by force.
+ *
  * @param {string} action
  * @param {Handler} handler
  * @returns {void}
- * @throws {TypeError} If the action is malformed or already registered.
+ * @throws {TypeError} If the action is malformed or already registered here.
  */
 export function onRequest(action, handler) {
   assertAction(action);
@@ -270,7 +336,7 @@ export function onRequest(action, handler) {
     throw new TypeError(`Handler for "${action}" must be a function, received ${shown(handler)}.`);
   }
   if (handlers.has(action)) {
-    throw new TypeError(`A handler for "${action}" is already registered. One action, one handler.`);
+    throw new TypeError(`A handler for "${action}" is already registered in this Surface.`);
   }
   handlers.set(action, handler);
 
@@ -285,8 +351,12 @@ export function onRequest(action, handler) {
  * which is the whole of the relationship between the two files: the logger
  * imports this module, and this module never imports the logger.
  *
+ * A second call replaces the first rather than refusing it, so the one caller
+ * this is written for stays the only caller by convention.
+ *
  * @param {(entry: TraceEntry) => void} fn
  * @returns {void}
+ * @throws {TypeError} If `fn` is not a function.
  */
 export function setTracer(fn) {
   if (typeof fn !== 'function') {
