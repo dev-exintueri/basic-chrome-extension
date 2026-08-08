@@ -351,7 +351,9 @@ L1 says "every Module file". A directory walk cannot apply that without being to
 
 `AGENTS.md` is not walked for L1 but *is* scanned for L13. `tools/` and `e2e/` are not extension code (AD-3) and carry no annotation obligation.
 
-**The base manifest keys** belong to the repository rather than to any Module, so no fragment declares them and L12 never sees them: `manifest_version`, `name`, `version`, `description`, `icons`, `background.service_worker`, and `action.default_popup`. Every other key in the root `manifest.json` is contributed by some Module's fragment, which is what makes the Acceptance Check's merge assertion (AD-17) checkable.
+**The base manifest keys** belong to the repository rather than to any Module, so no fragment declares them and L12 never sees them: `manifest_version`, `name`, `version`, `description`, `icons`, `background.service_worker`, `background.type`, and `action.default_popup`. Every other key in the root `manifest.json` is contributed by some Module's fragment, which is what makes the Acceptance Check's merge assertion (AD-17) checkable.
+
+`background.type` is a sibling of `background.service_worker` and is listed for the same reason: `sw.js` uses `import`, MV3 service workers are classic workers by default, and without `"type": "module"` the worker does not start. It is the repository's key, not any Module's, and a Module has no way to ask for it.
 
 | # | Rule |
 |---|---|
@@ -453,7 +455,7 @@ Step 4 is the honest cost of NFR-3. There is no registry, no auto-discovery, no 
 
 **NFR-4 requires every applicable pitfall below to appear as a `@pitfall` line in the relevant Module's Annotation Block.** That obligation is stated here rather than in a planning artifact because a Consuming Agent receives this repository and nothing else — a conformance rule pinned to a document the audience never sees cannot be conformed to.
 
-These are the eighteen known failure modes that **produce a wrong result without raising an error**. That is the entire admission criterion. A crash, a rejected promise, or a red console line is not a pitfall — it announces itself. Everything below returns something that looks fine.
+These are the twenty known failure modes that **produce a wrong result without raising an error**. That is the entire admission criterion. A crash, a rejected promise, or a red console line is not a pitfall — it announces itself. Everything below returns something that looks fine.
 
 Two standing rules:
 
@@ -468,6 +470,7 @@ Two standing rules:
 | Assuming the service worker persists | Terminated after ~30 s idle; in-memory state vanishes |
 | Keepalive ping loops | Battery drain and Web Store rejection risk |
 | Tracing the log action itself | The tracer logs, which sends the log action again; the channel and the buffer flood |
+| Two Surfaces appending to one stored collection | Each rewrites the whole value and drops the other's entry; both writes report success |
 
 ### Storage, configuration, and secrets
 
@@ -475,6 +478,7 @@ Two standing rules:
 |---|---|
 | Session storage read from a content script | Not exposed without an explicit access-level call |
 | Secrets written unencrypted | Plaintext on disk, readable without running your code |
+| Storing a value `JSON` cannot carry | `chrome.storage` reshapes it instead of refusing it — a `Date` and a `Set` become `{}`, a circular reference becomes `null`, an `undefined` property disappears; the write resolves |
 | API key in a configuration field | Synced storage reaches Google's servers, not end-to-end encrypted |
 | Options interface saving per keystroke | Exceeds the synced write-rate limit; the write fails, not the UI |
 | Reading configuration before migration completes | Update handler races other Surfaces |
@@ -503,7 +507,7 @@ Two standing rules:
 |---|---|
 | An error code outside the closed set reaching a banner | Renders as a label nobody defined |
 
-*Provenance: PRD `addendum.md` §C contributed the original sixteen. The addendum remains the reasoning record for those, and the two must not diverge. Entries beyond the sixteen were discovered by the Modules that guard them under the floor-not-ceiling rule above, and originate here rather than in the addendum: the log-tracing recursion in `core/messaging.js`, and the unrecognised error code in `core/errors.js`.*
+*Provenance: PRD `addendum.md` §C contributed the original sixteen. The addendum remains the reasoning record for those, and the two must not diverge. Entries beyond the sixteen were discovered by the Modules that guard them under the floor-not-ceiling rule above, and originate here rather than in the addendum: the log-tracing recursion in `core/messaging.js`, the unrecognised error code in `core/errors.js`, the silent reshaping of an unserialisable value in `core/storage.js`, and the two-writer collection rewrite in `core/logger.js`. The last two were found by measuring Chrome rather than by reading it, and each shipped as a `@pitfall` one story before it could be recorded here.*
 
 ## Tier Criteria
 
@@ -565,7 +569,7 @@ Six execution contexts, each owning a bounded set of concerns. This table is nor
 |---|---|---|
 | `local` | 10 MB (5 MB on Chrome ≤ 113) | Settings, ciphertext, machine-local flags including the Developer Mode toggle |
 | `sync` | ~100 KB total, 8 KB per item, 120 writes/min, 1,800/hour | Synced user preferences only. **Never a secret** — `sync` reaches Google's servers and is not end-to-end encrypted |
-| `session` | 10 MB, in-memory, never written to disk, cleared on browser restart; **not exposed to content scripts without an explicit `setAccessLevel()` call** | The unlocked encryption key, service-worker state, the developer log ring buffer |
+| `session` | 10 MB (1 MB on Chrome ≤ 111), in-memory, never written to disk, cleared on browser restart; **not exposed to content scripts without an explicit `setAccessLevel()` call** | The unlocked encryption key, service-worker state, the developer log ring buffer |
 
 `chrome.storage.local` is **plaintext in the profile directory**. Chrome's OSCrypt layer protects Chrome's own password database, not extension storage. This is not a hardening note — it is the reason `features/secret-box/` exists, and the reason an authentication gate that produces no key material protects nothing.
 
