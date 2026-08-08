@@ -28,6 +28,16 @@
  * `sync` is **never a place for a secret**: it reaches Google's servers and is
  * not end-to-end encrypted.
  *
+ * **Loading this module opens `session` to every content script, for the whole
+ * profile.** The grant below is what makes the area reachable from a content
+ * script at all, and it is not scoped to the importer: a Surface that only ever
+ * uses `local` still makes it. The setting is stored with the profile and
+ * **survives a browser restart**, so deleting the call does not close the area
+ * again on a profile where it has already run. Anything in `session` is
+ * therefore readable by any content script this extension injects -- which
+ * includes the unlocked encryption key `features/secret-box/` keeps there. The
+ * isolated world keeps it away from the page itself, not from your own leaves.
+ *
  * This module performs no encryption. Sealing a value is FR-20's concern and
  * lives in `features/secret-box/`; what arrives here is stored as it was handed
  * over.
@@ -59,11 +69,28 @@ export const AREAS = Object.freeze(
  */
 const KEY_PATTERN = /^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)*$/;
 
-const NO_STORAGE = 'Extension storage is not available here. It works only inside an extension Surface.';
+// Measured: an extension whose manifest omits the storage permission has no
+// chrome.storage at all, inside its own service worker. The first wording named
+// only the context, which is the one cause that is provably false there.
+const NO_STORAGE = 'Extension storage is not available here. This is not an extension Surface, or the manifest declares no storage permission.';
+const NO_SESSION_AREA = 'Session storage needs Chrome 102 or later. This browser does not provide the area.';
 const NO_SESSION_ACCESS = 'Session storage is not open to this context. Only extension pages and the service worker reach it.';
 const READ_FAILED = 'The stored value could not be read. Try again.';
-const WRITE_FAILED = 'The value could not be stored. Try again, or store less if the area is full.';
+const WRITE_FAILED = 'The value could not be stored. Try again.';
 const REMOVE_FAILED = 'The stored value could not be removed. Try again.';
+
+/**
+ * How Chrome words a refusal to touch a storage area from an untrusted context.
+ * Measured on Chrome 151: `Access to storage is not allowed from this context.`
+ *
+ * A failed grant alone is not evidence that a later failure was an access
+ * problem -- the access level is stored with the profile, so a context whose own
+ * grant was refused can still reach `session` because an earlier one succeeded.
+ * Diagnosing from the grant alone reported a quota overflow as a closed area.
+ * If Chrome rewords this the match stops firing and the failure reports as
+ * `failed`, which is the safe direction.
+ */
+const ACCESS_DENIED = /not allowed from this context/i;
 
 /**
  * Whether `session` is open to this context. A content script cannot grant its
@@ -108,6 +135,24 @@ function assertKey(key) {
 }
 
 /**
+ * `chrome.storage.set({ k: undefined })` is a no-op object: Chrome resolves,
+ * writes nothing, and leaves any previous value in place. Returning `{ ok:true }`
+ * for that is the one shape this module exists to prevent, so it is refused
+ * before the call rather than reported after it.
+ *
+ * @param {unknown} value
+ * @returns {void}
+ * @throws {TypeError} If the value cannot be stored.
+ */
+function assertStorable(value) {
+  if (value === undefined) {
+    throw new TypeError(
+      'A value of undefined cannot be stored. Chrome drops the key and reports success; store null, or call remove().',
+    );
+  }
+}
+
+/**
  * @param {Area} area
  * @returns {void}
  * @throws {TypeError} If the area cannot be written.
@@ -131,7 +176,7 @@ function assertWritable(area) {
  * @returns {chrome.storage.StorageArea | undefined}
  */
 function resolveArea(area) {
-  if (typeof chrome === 'undefined' || chrome.storage === undefined) return undefined;
+  if (typeof chrome === 'undefined' || !chrome.storage) return undefined;
   switch (area) {
     case 'local':
       return chrome.storage.local;
@@ -195,16 +240,28 @@ grantSessionAccess();
  */
 async function run(area, failure, operation) {
   const store = resolveArea(area);
-  if (store === undefined) return { ok: false, error: makeError('unavailable', NO_STORAGE) };
+  if (store === undefined) {
+    const hasStorage = typeof chrome !== 'undefined' && Boolean(chrome.storage);
+    const missing = hasStorage && area === 'session' ? NO_SESSION_AREA : NO_STORAGE;
+    return { ok: false, error: makeError('unavailable', missing) };
+  }
 
   const granted = area === 'session' ? await grantSessionAccess() : true;
 
   try {
     return await operation(store);
   } catch (thrown) {
-    return granted
-      ? { ok: false, error: makeError('failed', failure, thrown) }
-      : { ok: false, error: makeError('unavailable', NO_SESSION_ACCESS, thrown) };
+    // Both halves are required. Without the grant result, a trusted context
+    // would inherit the diagnosis; without the message, every session failure in
+    // a content script -- a quota overflow included -- would be reported as a
+    // closed area while the area is demonstrably open.
+    const denied =
+      !granted &&
+      thrown instanceof Error &&
+      ACCESS_DENIED.test(thrown.message);
+    return denied
+      ? { ok: false, error: makeError('unavailable', NO_SESSION_ACCESS, thrown) }
+      : { ok: false, error: makeError('failed', failure, thrown) };
   }
 }
 
@@ -246,14 +303,16 @@ export function get(area, key) {
  *
  * @param {Area} area One of `AREAS`, excluding `managed`.
  * @param {string} key `<owner>:<key>`.
- * @param {unknown} value Anything JSON-serialisable.
+ * @param {unknown} value Anything JSON-serialisable, and never `undefined`.
  * @returns {Promise<Result>}
- * @throws {TypeError} Synchronously, if the grammar is wrong or `area` is `managed`.
+ * @throws {TypeError} Synchronously, if the grammar is wrong, `area` is
+ *   `managed`, or `value` is `undefined`.
  */
 export function set(area, key, value) {
   assertArea(area);
-  assertWritable(area);
   assertKey(key);
+  assertWritable(area);
+  assertStorable(value);
 
   return run(area, WRITE_FAILED, async (store) => {
     await store.set({ [key]: value });
@@ -272,8 +331,8 @@ export function set(area, key, value) {
  */
 export function remove(area, key) {
   assertArea(area);
-  assertWritable(area);
   assertKey(key);
+  assertWritable(area);
 
   return run(area, REMOVE_FAILED, async (store) => {
     await store.remove(key);
