@@ -751,7 +751,7 @@ Nothing is circular except the capability-matrix status dot, which is 8 px and a
 
 ## Components
 
-Every component below is implementable with direct DOM writes plus a small render helper — no framework, no template compiler, no virtual DOM (FR-6, NFR-3, addendum §A.6). `@scales-to` on the render helper records the condition under which a framework becomes correct: *view state outgrows what a full re-render of a list can express*.
+Every component below is implementable with direct DOM writes plus a small render helper — no framework, no template compiler, no virtual DOM (FR-6, NFR-3, addendum §A.6). `@scales-to` on the render helper records the condition under which a framework becomes correct: *list state outgrows a full re-render (per-row local state)*, whose replacement is a framework with a diff.
 
 ### Panel header
 
