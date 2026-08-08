@@ -1,7 +1,7 @@
 node_modules/
 
-# Chrome reserves filenames beginning with "_" in an unpacked extension and
-# refuses to load a directory containing them. These are tool-owned working
-# directories, not repository content.
+# Tool-owned working directories, not repository content. Keeping them out of a
+# clone is what makes the Load unpacked claim hold for someone who is not the
+# maintainer.
 _bmad/
 _bmad-output/
