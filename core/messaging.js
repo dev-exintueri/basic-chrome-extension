@@ -8,7 +8,7 @@
  * @scales-to Hand-registered actions outgrow roughly a dozen -> a typed event bus with a registry.
  */
 
-import { ERROR_CODES, makeError } from './errors.js';
+import { ERROR_CODES, makeError, shown } from './errors.js';
 
 /**
  * The Surfaces a request can come from. Closed, and exported because the set
@@ -43,8 +43,14 @@ const ACTION_PATTERN = /^[a-z][a-z0-9-]*\/[a-z][a-z0-9-]*$/;
  * it again: log() sends core/log, tracing that send calls log(), which sends
  * core/log. Nothing in the log stream would ever show the flood, because every
  * entry in it is a message that really was sent.
+ *
+ * Exported for the same reason SURFACES is: the value itself is the contract,
+ * and the three places that need it -- the check below, core/logger.js's send,
+ * and the composition root's onRequest line -- must be the same string or the
+ * recursion comes back. It was written out three times before, with nothing
+ * connecting the copies and no checker that could see them diverge.
  */
-const LOG_ACTION = 'core/log';
+export const LOG_ACTION = 'core/log';
 
 const NO_MESSAGING = 'Extension messaging is not available here. It works only inside an extension Surface.';
 const NO_ANSWER = 'No Surface answered this action. It is answered only while a Surface that registers it is loaded.';
@@ -59,18 +65,6 @@ const handlers = new Map();
 let tracer = () => {};
 
 let listening = false;
-
-/**
- * Name a rejected argument without risking a second throw. Only a string is
- * quoted; anything else is reported by type, because an arbitrary value has no
- * safe universal rendering.
- *
- * @param {unknown} value
- * @returns {string}
- */
-function shown(value) {
-  return typeof value === 'string' ? `"${value}"` : `a ${typeof value}`;
-}
 
 /**
  * @param {unknown} value

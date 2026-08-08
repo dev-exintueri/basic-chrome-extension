@@ -43,7 +43,7 @@
  * over.
  */
 
-import { makeError } from './errors.js';
+import { makeError, shown } from './errors.js';
 
 /**
  * The four storage areas. Exported because the set itself is the contract: a
@@ -100,17 +100,6 @@ const ACCESS_DENIED = /not allowed from this context/i;
  * @type {Promise<boolean> | null}
  */
 let sessionAccess = null;
-
-/**
- * Name a rejected argument without risking a second throw. Only a string is
- * quoted; anything else is reported by type.
- *
- * @param {unknown} value
- * @returns {string}
- */
-function shown(value) {
-  return typeof value === 'string' ? `"${value}"` : `a ${typeof value}`;
-}
 
 /**
  * @param {unknown} area

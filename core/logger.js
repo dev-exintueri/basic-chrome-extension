@@ -58,8 +58,8 @@
  * `storage.session`, and the reason it lives there.
  */
 
-import { makeError } from './errors.js';
-import { SURFACES, request, setTracer } from './messaging.js';
+import { makeError, shown } from './errors.js';
+import { LOG_ACTION, SURFACES, request, setTracer } from './messaging.js';
 import { get, set, subscribe } from './storage.js';
 
 /** @typedef {(typeof SURFACES)[number]} Surface */
@@ -107,9 +107,6 @@ const FIELD_LIMIT = 200;
 const DEV_MODE_KEY = 'cfg:dev-mode';
 const DEV_MODE_DEFAULT = false;
 
-/** The one action `core/messaging.js` does not trace. Changing it here alone would recurse. */
-const LOG_ACTION = 'core/log';
-
 const REJECTED_ENTRY = 'The log entry did not match the record shape and was not stored.';
 
 /**
@@ -156,17 +153,6 @@ subscribe('local', DEV_MODE_KEY, (value) => {
   devMode = value === true;
   seedSettled = true;
 });
-
-/**
- * Name a rejected argument without risking a second throw. Only a string is
- * quoted; anything else is reported by type.
- *
- * @param {unknown} value
- * @returns {string}
- */
-function shown(value) {
-  return typeof value === 'string' ? `"${value}"` : `a ${typeof value}`;
-}
 
 /**
  * @param {unknown} from

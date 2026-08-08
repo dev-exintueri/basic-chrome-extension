@@ -36,8 +36,8 @@
  * base manifest keys owned by the repository; no Module contributes them.
  */
 
-import { onRequest } from './core/messaging.js';
+import { LOG_ACTION, onRequest } from './core/messaging.js';
 import { receiveLog } from './core/logger.js';
 
 // The worker is the ring buffer's only writer. Every other Surface sends here.
-onRequest('core/log', receiveLog);
+onRequest(LOG_ACTION, receiveLog);

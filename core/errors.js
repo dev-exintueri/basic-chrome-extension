@@ -22,7 +22,34 @@ export const ERROR_CODES = Object.freeze(
 /** @typedef {(typeof ERROR_CODES)[number]} ErrorCode */
 
 /**
- * Render a rejected argument for a diagnostic message without throwing again.
+ * Name a rejected argument in a message without risking a second throw.
+ *
+ * A string is quoted, because a typo is only readable when you can see it.
+ * Anything else is reported **by type and never by value**, because an
+ * arbitrary value has no safe universal rendering and because a message that
+ * echoes what it was given is one accident away from putting a secret in a
+ * console line, a log entry, or a bug report.
+ *
+ * This is the kernel's one such helper. It lived privately in three files
+ * before, which NFR-2 calls a defect at the second occurrence; it is exported
+ * here rather than from a tenth Core Module because AR-4 closes `core/` at nine
+ * files and every file that needs it already imports this one.
+ *
+ * It is **not** `describe` below. This one hides the value on purpose; that one
+ * shows it on purpose, and each is wrong where the other belongs.
+ *
+ * @param {unknown} value
+ * @returns {string}
+ */
+export function shown(value) {
+  return typeof value === 'string' ? `"${value}"` : `a ${typeof value}`;
+}
+
+/**
+ * Render a rejected argument **including its value**, for the one case where
+ * the value is what the reader needs: an error code outside the closed set is a
+ * typo, and naming its type instead of its text would hide the typo.
+ *
  * `JSON.stringify` raises on a bigint and on a circular structure, and returns
  * `undefined` for a symbol, so every rejection path needs a fallback.
  *
