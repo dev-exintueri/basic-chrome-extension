@@ -73,9 +73,38 @@ const DIALOG_TITLE_ID = 'panel-dialog-title';
  * genuinely out of the tab order; `aria-disabled` is not, which is the whole
  * reason DESIGN.md disables with the attribute rather than the property -- a
  * control a keyboard user cannot reach takes its explanation with it.
+ *
+ * `input[type="hidden"]` is excluded because it matches every other clause and
+ * takes no focus: a view that passes one as its first field would make
+ * `focus()` a silent no-op, leave focus outside the dialog, and take the trap
+ * and `Escape` down with it. That is a defect of the selector, not of the view.
  */
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]),'
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]),'
   + ' select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Does `Enter` on this element mean "commit the dialog"?
+ *
+ * DESIGN.md says *`Enter` in the last field commits*, and a field is an input
+ * the user types or chooses in. A button or a link that happens to be the last
+ * focusable element of the content region is not one, and committing there
+ * would also `preventDefault()` the activation the user actually asked for --
+ * the dialog would commit and the control's own action would never run.
+ * `textarea` is excluded for the opposite reason: there `Enter` is the newline.
+ *
+ * @param {Element} node
+ * @returns {boolean}
+ */
+function commitsOnEnter(node) {
+  if (node.tagName === 'SELECT') {
+    return true;
+  }
+  if (node.tagName !== 'INPUT') {
+    return false;
+  }
+  const type = (node.getAttribute('type') || 'text').toLowerCase();
+  return !['button', 'submit', 'reset', 'checkbox', 'radio', 'image', 'file'].includes(type);
+}
 
 /**
  * Is this Module's view the one on screen?
@@ -101,7 +130,11 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]),'
  */
 function isActive(moduleName) {
   const views = document.getElementById('views');
-  if (views === null) {
+  // The region itself, then the section in it. A shell that hides the whole view
+  // region -- to show a full-panel surface over it -- leaves every section's own
+  // `hidden` untouched, so testing only the section would report a view that is
+  // nowhere on screen as the one entitled to the status line.
+  if (views === null || views.hidden !== false) {
     return false;
   }
   const section = /** @type {HTMLElement | null} */ (
@@ -111,25 +144,33 @@ function isActive(moduleName) {
 }
 
 /**
- * The status line, but only when this Module is entitled to write it.
+ * Write the status line, if this Module is entitled to write it.
  *
- * Both reasons to refuse land here so there is exactly one gate: the shell may
- * declare no status line at all (NFR-6 -- degrade, do not throw), and a view that
- * is mounted but not on screen must not write to the system's only success
- * channel while the user is looking at something else.
+ * **This is the only place the status element is touched**, and both reasons to
+ * refuse land here so there is exactly one gate: the shell may declare no status
+ * line at all (NFR-6 -- degrade, do not throw), and a view that is mounted but not
+ * on screen must not write to the system's only success channel while the user is
+ * looking at something else.
+ *
+ * An earlier shape returned the element and let three callers each re-check it for
+ * `null`. That made the check here unfalsifiable -- removing it changed nothing,
+ * because the callers caught the same case -- so the guard read like the
+ * protection without being it. One gate, one assignment, one thing to break.
  *
  * Resolved per call. The shell toggles `hidden` between calls, so an answer cached
  * at `panelFor()` time is a background view holding the channel.
  *
  * @param {string} moduleName
- * @returns {HTMLElement | null}
+ * @param {string} text
+ * @returns {boolean} Whether the write landed.
  */
-function writableStatus(moduleName) {
+function writeStatus(moduleName, text) {
   const status = document.getElementById('status');
   if (status === null || !isActive(moduleName)) {
-    return null;
+    return false;
   }
-  return status;
+  status.textContent = text;
+  return true;
 }
 
 /**
@@ -226,10 +267,11 @@ function openIn(root, spec) {
         return;
       }
       settled = true;
-      // Removed before the markup goes, because this listener is on `document`
-      // and would otherwise outlive the dialog it guards -- and it would fight
-      // the focus restoration two lines below.
+      // Removed before the markup goes, because both listeners are on `document`
+      // and would otherwise outlive the dialog they guard -- and the focus one
+      // would fight the restoration two lines below.
       document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('keydown', onKeydown, true);
       clear(root);
       // `focus()` on a detached element does nothing and raises nothing, so the
       // check is what makes the case visible. The opener is typically a list row,
@@ -272,19 +314,55 @@ function openIn(root, spec) {
     const fields = () => /** @type {HTMLElement[]} */ (
       [...content.querySelectorAll(FOCUSABLE)]
     );
-    const entry = () => fields()[0] ?? dialog;
+
+    // Focus the first field, and check that it took. `focus()` on an element
+    // that cannot hold focus -- one inside a `display:none` wrapper is the case
+    // the FOCUSABLE selector cannot see -- does nothing and raises nothing, and
+    // focus left outside the dialog is a trap that is not there.
+    //
+    // `restoring` is what stops the guard fighting another focus manager for
+    // ever. `focus()` dispatches `focusin` synchronously, so anything else on
+    // the page that moves focus back out on `focusin` -- a second dialog's guard,
+    // a host page's own focus handling -- turns the pull-back into unbounded
+    // mutual recursion that ends in a blown stack and a dead panel. Yielding
+    // after one attempt leaves focus where the other party put it, which is
+    // wrong but visible, rather than taking the document down.
+    let restoring = false;
+    const focusEntry = () => {
+      if (restoring) {
+        return;
+      }
+      restoring = true;
+      try {
+        const target = fields()[0] ?? dialog;
+        target.focus();
+        if (!dialog.contains(document.activeElement)) {
+          dialog.focus();
+        }
+      } finally {
+        restoring = false;
+      }
+    };
 
     /** @param {FocusEvent} event */
     function onFocusIn(event) {
       if (!dialog.contains(/** @type {Node | null} */ (event.target))) {
-        entry().focus();
+        focusEntry();
       }
     }
 
     /** @param {KeyboardEvent} event */
-    const onKeydown = (event) => {
+    function onKeydown(event) {
+      // An IME sends every candidate keystroke as a keydown, `Enter` and
+      // `Escape` included. Acting on those commits a half-composed string and
+      // discards the candidate the user was confirming -- a wrong result the
+      // user cannot distinguish from having pressed the button.
+      if (event.isComposing) {
+        return;
+      }
       if (event.key === 'Escape') {
         event.preventDefault();
+        event.stopPropagation();
         settle(false);
         return;
       }
@@ -292,41 +370,52 @@ function openIn(root, spec) {
         const items = focusables();
         if (items.length === 0) {
           event.preventDefault();
+          event.stopPropagation();
           return;
         }
         const first = items[0];
         const last = items[items.length - 1];
         const here = document.activeElement;
-        if (event.shiftKey && here === first) {
+        // The dialog root itself is deliberately outside `items` -- it is
+        // `tabindex="-1"` -- so a dialog whose content holds no field starts
+        // with focus on a node that is neither `first` nor `last`. Treating any
+        // position that is not inside the ring as an edge is what keeps that
+        // case from tabbing straight out and being dragged back by the guard.
+        const inRing = items.includes(/** @type {HTMLElement} */ (here));
+        const atEdge = event.shiftKey ? here === first : here === last;
+        if (atEdge || !inRing) {
           event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && here === last) {
-          event.preventDefault();
-          first.focus();
+          event.stopPropagation();
+          (event.shiftKey ? last : first).focus();
         }
         return;
       }
       if (event.key === 'Enter') {
-        // DESIGN.md: "Enter in the last field commits." Read literally -- the
-        // last focusable element of the content region, not of the whole dialog,
-        // whose last element is the commit button and handles Enter itself. A
-        // textarea is excluded because Enter there is the newline.
+        // DESIGN.md: "Enter in the last field commits." Read literally, and
+        // `commitsOnEnter` is what makes "field" mean a field: the last
+        // focusable element of the content region may be a button, and
+        // committing there would suppress its own activation.
         // Indexed rather than `.at(-1)`: `Array.prototype.at` is Chrome 92, above
         // Manifest V3's own 88, and this file claims `baseline`.
         const inContent = fields();
         const last = inContent[inContent.length - 1];
         const here = document.activeElement;
-        if (last !== undefined && here === last && last.tagName !== 'TEXTAREA') {
+        if (last !== undefined && here === last && commitsOnEnter(last)) {
           event.preventDefault();
+          event.stopPropagation();
           settle(true);
         }
       }
-    };
+    }
 
-    dialog.addEventListener('keydown', onKeydown);
+    // On `document`, in the capture phase, rather than on the dialog. A dialog
+    // is modal: `Escape` has to close it from wherever focus happens to be,
+    // including `<body>` after a click on the scrim, which is not a focusable
+    // node and therefore fires no `focusin` for the guard to catch.
+    document.addEventListener('keydown', onKeydown, true);
     document.addEventListener('focusin', onFocusIn);
     root.append(scrim, dialog);
-    entry().focus();
+    focusEntry();
   });
 }
 
@@ -377,11 +466,9 @@ export function panelFor(moduleName) {
   const revert = () => {
     pending = undefined;
     // Re-checked, not assumed: three seconds is long enough for the user to have
-    // switched views or for the shell to have gone away.
-    const status = writableStatus(moduleName);
-    if (status !== null) {
-      status.textContent = standing;
-    }
+    // switched views or for the shell to have gone away. `writeStatus` re-checks
+    // both, which is why the revert goes through it like every other write.
+    writeStatus(moduleName, standing);
   };
 
   /**
@@ -392,6 +479,13 @@ export function panelFor(moduleName) {
    * while the view was in the background is the right thing to revert to once it
    * is on screen again.
    *
+   * **A flash outranks a count.** While an outcome is standing, the new count is
+   * recorded and not drawn, and the revert draws it when the three seconds are
+   * up. Otherwise the ordinary shape of an action -- flash the outcome, then
+   * re-render and report the new count -- would replace `saved` after however
+   * long the re-render took, and the outcome DESIGN.md gives three seconds would
+   * get a few hundred milliseconds instead, with nothing raised.
+   *
    * @param {string} text
    * @returns {void}
    * @throws {TypeError} If `text` is not a string.
@@ -401,10 +495,10 @@ export function panelFor(moduleName) {
       throw new TypeError(`setStatus() needs a string, received ${shown(text)}.`);
     }
     standing = text;
-    const status = writableStatus(moduleName);
-    if (status !== null) {
-      status.textContent = text;
+    if (pending !== undefined) {
+      return;
     }
+    writeStatus(moduleName, text);
   };
 
   /**
@@ -428,12 +522,14 @@ export function panelFor(moduleName) {
     if (typeof text !== 'string' || text.trim().length === 0) {
       throw new TypeError(`flashStatus() needs a non-blank string, received ${shown(text)}.`);
     }
-    const status = writableStatus(moduleName);
-    if (status === null) {
+    clearTimeout(pending);
+    if (!writeStatus(moduleName, text)) {
+      // Nothing was drawn, so there is nothing to revert. Leaving the cleared
+      // deadline cleared is deliberate: a background view must not own a pending
+      // write to a shared element.
+      pending = undefined;
       return;
     }
-    clearTimeout(pending);
-    status.textContent = text;
     pending = setTimeout(revert, FLASH_MS);
   };
 
@@ -446,8 +542,17 @@ export function panelFor(moduleName) {
    * degrades to "the user did not commit" rather than to a hang.
    *
    * A second dialog while one is open **throws**. EXPERIENCE.md says dialogs are
-   * never nested, and unlike an absent landmark this is not something a host can
-   * do to a Module -- it is a call site opening two.
+   * never nested. The test looks for a dialog *this file rendered*, not for any
+   * child of the landmark: a shell that writes `<div id="dialog-root">` across
+   * two lines leaves a text node in it, and treating that as an occupied root
+   * would turn a formatting choice into an extension where no dialog can ever
+   * open. Between open and close the landmark is this file's to fill and empty.
+   *
+   * The throw assumes the standing dialog belongs to a live call. Nothing here
+   * closes a dialog whose view stops being the active one, because nothing
+   * switches views yet -- when the shell arrives it has to close the open dialog
+   * before it hides the view that opened it, or this becomes a host-produced
+   * throw rather than a call-site one.
    *
    * @param {{
    *   title: string,
@@ -464,8 +569,8 @@ export function panelFor(moduleName) {
     if (root === null || !isActive(moduleName)) {
       return Promise.resolve(false);
     }
-    if (root.firstChild !== null) {
-      throw new TypeError('openDialog() found #dialog-root occupied; dialogs are never nested.');
+    if (root.querySelector('[role="dialog"]') !== null) {
+      throw new TypeError('openDialog() found a dialog already open; dialogs are never nested.');
     }
     return openIn(root, checked);
   };
