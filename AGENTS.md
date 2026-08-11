@@ -1,38 +1,67 @@
-# 작업 완료 시점
+# AGENTS.md
 
-**"작업 완료"는 스토리(또는 독립 작업 단위)가 `done`이 된 시점이다.** 구현 커밋,
-리뷰, fix 커밋 같은 파이프라인 중간 단계는 완료가 아니며 프롬프트를 만들지 않는다.
-그 사이에 멈추지 않는 것이 CLAUDE.md의 파이프라인 규칙이 요구하는 바이고, 단계마다
-인계 프롬프트를 만드는 것은 그 규칙을 어기는 것이다.
+Working rules for any agent operating in this repository.
 
-완료 시 다음 작업이 남아 있으면 **새 세션이 이 대화를 전혀 모른다는 전제로** 인계
-프롬프트를 작성해 사용자에게 보여주고, 같은 내용을 `_bmad-output/NEXT-SESSION.md`에
-남긴다. 채팅에만 있는 프롬프트는 세션이 닫히면 사라진다.
+> **Note for story 3.8.** AR-21 gives this path a second job: the repository
+> conventions and every runnable command, verbatim. That inventory belongs in
+> this file alongside the rules below — do not create a second root `AGENTS.md`,
+> and do not move these rules out to make room for it.
 
-프롬프트에 반드시 들어갈 것:
+## Handing over when work completes
 
-1. **저장소 상태** — 브랜치, HEAD, origin 대비 위치와 push 여부, 미머지 브랜치,
-   작업 트리 상태
-2. **다음 작업과 그 시작점** — 스토리 번호, 파일 경로, 현재 status
-3. **다음 작업이 반드시 알아야 할 것** — 앞 작업이 남긴 미결 질문 중 이 작업이 첫
-   소비자인 것, 앞 작업이 명시적으로 넘긴 요구사항, 앞 작업이 값을 치르고 알아낸
-   함정
-4. **검증 방법** — 실행할 명령과, 각 명령이 실제로 측정하는 것과 측정하지 못하는 것
-5. **금지 사항** — 범위 밖 파일, 별도 승인이 필요한 행위(push, 머지)
+**"Work complete" means a story — or an independent unit of work — reaches
+`done`.** Intermediate pipeline steps are not completion: an implementation
+commit, a review, a fix commit. Producing a handover at each of those would
+contradict the pipeline rule that says not to stop between them.
 
-"다음은 1.10" 같은 한 줄은 이 규칙을 지킨 것이 아니다. **새 세션이 그 프롬프트만
-읽고 작업을 시작할 수 없다면 프롬프트가 부족한 것이다.**
+On completion, when work remains, write a handover **on the assumption that the
+next session knows nothing about this one**. Show it, and write the same content
+to `_bmad-output/NEXT-SESSION.md`; a prompt that exists only in a closed session
+does not exist.
 
+The handover carries five things:
 
+1. **Repository state** — branch, HEAD, position against origin and whether it
+   is pushed, unmerged branches, working-tree state.
+2. **The next task and where it starts** — story number, file path, current
+   status.
+3. **What the next task must know** — open questions it is the first consumer
+   of, requirements an earlier story handed to it explicitly, and traps an
+   earlier story paid to discover.
+4. **How to verify** — the commands to run, and for each one, what it does
+   **not** measure. "It loads" is not "it parsed"; a clean type-check with no
+   control run is not evidence.
+5. **What is out of bounds** — files outside the task's scope, and actions that
+   need separate approval (push, merge).
 
-&nbsp;
+**The test: if a fresh session cannot start from the handover alone, it is
+incomplete.** A line naming the next story number does not satisfy this rule.
 
-# 지침 파일 규칙
+## Amending DESIGN.md and EXPERIENCE.md
 
-## `DESIGN.md, EXPERIENCE.md`
+Both carry `status: final`, and both may still be revised **until story 7.5 tags
+a release**. That is the boundary because 7.5 is the point at which every claim
+has been proven and the documents stop being working drafts and start being the
+contract a consumer reads. Before it, a rule that measurement contradicts is a
+defect in the rule.
 
-- 1차 개발이 완료되기 전, 필요한 디자인 규칙을 수정,추가,삭제 가능
+Four constraints on the amendment:
 
+- **Measurement, not preference.** Amend a rule because something demonstrated
+  it wrong, and say in the commit message what was measured. A rule that is
+  merely inconvenient to implement is a rule the implementation should satisfy.
+- **Its own commit.** Never fold a document amendment into a story commit —
+  the story commit says what was built, the amendment says what the repository
+  now believes. Stories 1.6, 1.7 and 1.9 all landed theirs separately.
+- **Precedence is unchanged.** The PRD outranks `DESIGN.md`, which outranks
+  `EXPERIENCE.md`. This rule grants no permission over the PRD: an amendment
+  that would contradict it is a product decision, not a documentation fix. Where
+  `DESIGN.md` and `EXPERIENCE.md` disagree, `DESIGN.md` wins and `EXPERIENCE.md`
+  is the defect.
+- **Nothing else is covered.** `ARCHITECTURE-SPINE.md` and the PRD are outside
+  this rule and still need approval — story 1.8 Q1 found an error in the spine's
+  floor-audit table and correctly left it standing.
 
-
-&nbsp;
+When an amendment lands, update every planning artifact that restates the same
+rule. `requirements-inventory.md` summarises `DESIGN.md`, and a summary that
+outlives its source is how a later story inherits a rule nobody holds any more.
