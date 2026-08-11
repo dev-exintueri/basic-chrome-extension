@@ -24,13 +24,15 @@ import { log } from './logger.js';
  * its `commands` shortcuts, and accepting one of its omnibox suggestions. The
  * grant covers the tab that was active at that moment and lasts until it
  * navigates to another origin. **A click inside an extension document is not one
- * of them** -- not in a popup's page, not in the side panel. Measured: a real
- * trusted click inside an extension page grants nothing, and the injection is
- * refused with *"Cannot access contents of the page."* What makes the panel flow
- * work is the grant the *toolbar click* already made on that tab, still live when
- * the panel's button is pressed. A Consuming Agent copying this file into an
- * extension whose UI is opened some other way inherits that dependency, and this
- * paragraph is the only warning they will get.
+ * of them** -- not in a popup's page, not in the side panel. Measured both ways
+ * on Chrome 151. An extension page opened by URL, clicked for real, is refused
+ * with *"Cannot access contents of the page."* The same page opened **by the
+ * toolbar icon**, clicked the same way, injects and returns the page's own
+ * title. The difference is not the click: it is that the toolbar click granted
+ * `activeTab` on that tab, and the grant is still live when the button inside
+ * is pressed. A Consuming Agent copying this file into an extension whose UI is
+ * reached some other way inherits that dependency, and this paragraph is the
+ * only warning they will get.
  *
  * **The injection is issued where the gesture is, not routed through the service
  * worker.** A hop through the worker adds a place to hang without adding a
