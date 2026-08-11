@@ -1,0 +1,111 @@
+/*
+ * @tier required
+ * @chrome-min baseline
+ * @permissions none
+ * @pitfall A token absent from the dark block silently keeps its light value.
+ * @alternative light-dark() -- raises the repository floor above the 116 this repo declares.
+ * @scales-to A theme beyond light and dark -> a downstream html[data-theme] block.
+ */
+
+/* Every value here is the literal from DESIGN.md's frontmatter. This file
+ * declares custom properties and applies none of them: component rules live in
+ * ui/sidepanel/shell.css and in each Module's view.css, which reach every token
+ * through var(--token, <literal fallback>) so a slice copied where this file
+ * does not exist still resolves to the light-mode default. */
+
+:root {
+  /* Neutral ramp */
+  --surface: #FFFFFF;
+  --surface-sunken: #F5F6F7;
+  --surface-raised: #FFFFFF;
+  --border: #DCE0E5;
+  --border-strong: #BFC6CD;
+  --text: #1B1F24;
+  --text-muted: #5A636D;
+  --text-faint: #697079;
+
+  /* Accent: one colour, one meaning -- at most once per visible region */
+  --accent: #1D4ED8;
+  --accent-soft: #E8EEFC;
+  --on-accent: #FFFFFF;
+
+  /* Status: outcome, never decoration, always paired with its word */
+  --success: #116B3C;
+  --warning: #8A5300;
+  --danger: #B3261E;
+
+  /* Two system stacks. No font file ships and none is requested. */
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* Seven roles, as font shorthand: weight, size, line-height, family.
+   * The stack is written out rather than reaching for var(--font-ui), and that
+   * is load-bearing. A consumer copies the whole declaration into its fallback:
+   *   font: var(--type-body, 400 13px/1.5 system-ui, ...);
+   * A var() inside a fallback is itself unresolvable where no token sheet
+   * exists, and an unresolvable var() anywhere in a value is invalid at
+   * computed-value time -- the WHOLE declaration is dropped and the text
+   * renders in the host's inherited font. Measured: 30px Georgia instead of
+   * 13px system-ui. That is the silent failure this repository exists to
+   * prevent, so these seven values carry no var(). */
+  --type-title: 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-section-label: 600 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-body: 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-body-strong: 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-meta: 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-mono: 400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --type-mono-sm: 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --type-section-label-tracking: 0.06em;
+
+  /* 4 px unit. Padding, gaps and margins use a named step. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* Named layout constants (DESIGN.md Fixed Numbers) */
+  --panel-gutter: 12px;
+  --options-gutter: 24px;
+  --row-y: 6px;
+  --control-height: 28px;
+  --panel-min-width: 320px;
+  --options-column: 560px;
+
+  /* Radii. Tight on purpose; the pill is reserved for badges. */
+  --radius-sm: 3px;
+  --radius: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  /* The one shadow in the system. It exists only on the dialog. */
+  --shadow-dialog: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+/* Dark redefines the fourteen colour tokens and nothing else. Type, spacing,
+ * radii and the shadow are theme-independent; a token missing from this block
+ * keeps its light value and renders wrong without raising anything. */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #17191C;
+    --surface-sunken: #101215;
+    --surface-raised: #1E2126;
+    --border: #2C3037;
+    --border-strong: #454C55;
+    --text: #E7EAEE;
+    --text-muted: #A6AEB8;
+    --text-faint: #8A929B;
+
+    --accent: #8FB2F7;
+    --accent-soft: #21304D;
+    --on-accent: #12141A;
+
+    --success: #5FD08C;
+    --warning: #E2B04A;
+    --danger: #F1867E;
+  }
+}

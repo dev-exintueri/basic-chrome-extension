@@ -651,12 +651,14 @@ Status colour appears as text and as a 2 px left border on a banner. Never as a 
 
 Measured, not assumed. Every text-bearing pair below is ≥ 4.5:1 against the surface it is specified on.
 
+Computed from the literals above by the WCAG 2.x relative-luminance formula and printed to one decimal, so each cell is checkable rather than asserted. Story 1.9's harness recomputes all eighteen from the colours a browser actually parses out of `ui/tokens.css` and reports any cell that does not match — which is how the dark `text-faint` on `surface-sunken` cell was found to have been computed against `surface-raised` (5.1) instead.
+
 | Pair | Light | Dark |
 |---|---|---|
 | `text` on `surface` | 16.6:1 | 14.6:1 |
 | `text-muted` on `surface` | 6.1:1 | 7.9:1 |
 | `text-faint` on `surface` | 5.0:1 | 5.6:1 |
-| `text-faint` on `surface-sunken` | 4.6:1 | 5.1:1 |
+| `text-faint` on `surface-sunken` | 4.6:1 | 6.0:1 |
 | `accent` on `surface` | 6.7:1 | 8.3:1 |
 | `on-accent` on `accent` fill | 6.7:1 | 8.7:1 |
 | `success` on `surface` | 6.6:1 | 9.1:1 |
@@ -690,7 +692,9 @@ Ramp discipline: seven roles, and adding an eighth requires deleting one. There 
 
 ## Layout & Spacing
 
-**4 px unit.** The named scale is `{spacing.1}` 4, `{spacing.2}` 8, `{spacing.3}` 12, `{spacing.4}` 16, `{spacing.5}` 20, `{spacing.6}` 24, `{spacing.8}` 32. Padding, gaps, and margins use a named step. Component *dimensions* — a 28 px control, a 40 px header, a 20 px badge — need not be named tokens, but **every dimension in the system is a multiple of `{spacing.unit}`**. A value that is not a multiple of 4 is a defect.
+**4 px unit.** The named scale is `{spacing.1}` 4, `{spacing.2}` 8, `{spacing.3}` 12, `{spacing.4}` 16, `{spacing.5}` 20, `{spacing.6}` 24, `{spacing.8}` 32. Padding, gaps, and margins use a named step. Component *dimensions* — a 28 px control, a 40 px header, a 20 px badge — need not be named tokens, but **every dimension in the system is a multiple of `{spacing.unit}`, with exactly one exception: `{spacing.row-y}` is 6 px**, which is what puts a list row on the 28 px interactive minimum (see *Density*, below). A value outside that exception that is not a multiple of 4 is a defect.
+
+**The rule is about dimensions, and radii and type sizes are neither.** `{rounded.sm}` 3, `{rounded.md}` 6 and `{rounded.full}` 9999 are shape; 15/13/12/11 px are positions on a type ramp. A checker that applies the 4 px rule to them fails against a correct system — story 1.9's harness scopes it to the `--space-*` scale and pins `row-y` as the sole named constant off the grid, so a second exception cannot appear quietly.
 
 **The side panel is a strip, not a page.** One column, full width, `{spacing.panel-gutter}` 12 px on each side. It has a **design floor of 320 px** and must remain usable when the user drags it to 800 px — but there are **no breakpoints**. A layout that needs a breakpoint inside the panel is a layout that wanted to be a page. Content grows by reflowing text and by letting lists take the extra height, never by switching to columns.
 
