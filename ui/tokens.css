@@ -4,7 +4,7 @@
  * @permissions none
  * @pitfall A token absent from the dark block silently keeps its light value.
  * @alternative light-dark() -- raises the repository floor above the 116 this repo declares.
- * @scales-to A theme beyond light and dark is needed -> one html[data-theme] block per theme.
+ * @scales-to A theme beyond light and dark -> a downstream html[data-theme] block.
  */
 
 /* Every value here is the literal from DESIGN.md's frontmatter. This file
@@ -38,14 +38,23 @@
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
 
-  /* Seven roles, as font shorthand: weight, size, line-height, family. */
-  --type-title: 600 15px/1.35 var(--font-ui);
-  --type-section-label: 600 11px/1.4 var(--font-ui);
-  --type-body: 400 13px/1.5 var(--font-ui);
-  --type-body-strong: 600 13px/1.5 var(--font-ui);
-  --type-meta: 400 11px/1.4 var(--font-ui);
-  --type-mono: 400 12px/1.5 var(--font-mono);
-  --type-mono-sm: 400 11px/1.45 var(--font-mono);
+  /* Seven roles, as font shorthand: weight, size, line-height, family.
+   * The stack is written out rather than reaching for var(--font-ui), and that
+   * is load-bearing. A consumer copies the whole declaration into its fallback:
+   *   font: var(--type-body, 400 13px/1.5 system-ui, ...);
+   * A var() inside a fallback is itself unresolvable where no token sheet
+   * exists, and an unresolvable var() anywhere in a value is invalid at
+   * computed-value time -- the WHOLE declaration is dropped and the text
+   * renders in the host's inherited font. Measured: 30px Georgia instead of
+   * 13px system-ui. That is the silent failure this repository exists to
+   * prevent, so these seven values carry no var(). */
+  --type-title: 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-section-label: 600 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-body: 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-body-strong: 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-meta: 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --type-mono: 400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --type-mono-sm: 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --type-section-label-tracking: 0.06em;
 
   /* 4 px unit. Padding, gaps and margins use a named step. */
