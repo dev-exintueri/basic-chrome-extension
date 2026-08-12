@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual system sample — basic-chrome-extension</title>
+
+<!--
+  The rendered counterpart to DESIGN.md Part B. Every component the visual
+  system specifies, drawn once, at panel width.
+
+  THIS FILE DEFINES NO VALUES. It links ui/tokens.css and reaches every colour,
+  size, space and radius through var(--token, <literal fallback>) -- the same
+  contract AR-25 and AD-25 put on a Module's view.css. So it is also a working
+  demonstration of that contract rather than a description of it: delete the
+  <link> below and the page still renders correctly, at this repository's
+  light-mode defaults, because every fallback is present.
+
+  It is a document, not extension code: no manifest key points at it, nothing
+  imports it, and it carries no Annotation Block (DESIGN.md, "The file set the
+  walk covers" -- sample/ is not walked).
+
+  Themes follow the browser. There is no toggle here, for the same reason the
+  extension has none: Chrome owns that preference. Switch your OS or browser
+  appearance to see the dark ramp.
+-->
+
+<link rel="stylesheet" href="../ui/tokens.css">
+
+<style>
+  /* Page chrome for the sample itself. Not part of the visual system. */
+  body {
+    margin: 0;
+    background: var(--surface-sunken, #F5F6F7);
+    color: var(--text, #1B1F24);
+    font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  }
+  .sheet {
+    max-width: var(--options-column, 560px);
+    margin: 0 auto;
+    padding: var(--space-6, 24px) var(--space-4, 16px) var(--space-8, 32px);
+  }
+  .sheet > h1 {
+    font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    margin: 0 0 var(--space-2, 8px);
+  }
+  .lede { color: var(--text-muted, #5A636D); margin: 0 0 var(--space-6, 24px); }
+  .spec {
+    font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    color: var(--text-faint, #697079);
+    margin: 0 0 var(--space-2, 8px);
+  }
+  h2 {
+    font: var(--type-section-label, 600 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    letter-spacing: var(--type-section-label-tracking, 0.06em);
+    text-transform: uppercase;
+    color: var(--text-muted, #5A636D);
+    margin: var(--space-6, 24px) 0 var(--space-2, 8px);
+  }
+  /* The panel is a 320px strip. Every component below is shown inside one. */
+  .panel {
+    width: var(--panel-min-width, 320px);
+    background: var(--surface, #FFFFFF);
+    border: 1px solid var(--border, #DCE0E5);
+    border-radius: var(--radius, 4px);
+    overflow: hidden;
+    position: relative;
+  }
+  .pad { padding: var(--space-2, 8px) var(--panel-gutter, 12px); }
+
+  /* 01 Panel header ------------------------------------------------------- */
+  .panel-header {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--panel-gutter, 12px);
+    border-bottom: 1px solid var(--border, #DCE0E5);
+    background: var(--surface, #FFFFFF);
+  }
+  .panel-header .title {
+    font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    margin: 0;
+  }
+
+  /* 02 Module nav --------------------------------------------------------- */
+  .module-nav {
+    height: 32px;
+    display: flex;
+    gap: var(--space-1, 4px);
+    align-items: stretch;
+    padding: 0 var(--panel-gutter, 12px);
+    border-bottom: 1px solid var(--border, #DCE0E5);
+    overflow-x: auto;
+  }
+  .nav-item {
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0 var(--space-2, 8px);
+    color: var(--text-muted, #5A636D);
+    font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .nav-item[aria-current='true'] {
+    color: var(--accent, #1D4ED8);
+    border-bottom-color: var(--accent, #1D4ED8);
+  }
+
+  /* 03 List row ----------------------------------------------------------- */
+  .row {
+    display: flex;
+    width: 100%;
+    gap: var(--space-2, 8px);
+    align-items: center;
+    padding: var(--row-y, 6px) var(--panel-gutter, 12px);
+    background: none;
+    border: 0;
+    border-left: 2px solid transparent;
+    border-radius: var(--radius-sm, 3px);
+    color: var(--text, #1B1F24);
+    font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    text-align: left;
+    cursor: pointer;
+  }
+  .row:hover { background: var(--surface-sunken, #F5F6F7); }
+  .row[aria-current='true'] {
+    background: var(--accent-soft, #E8EEFC);
+    border-left-color: var(--accent, #1D4ED8);
+  }
+  .row-text { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row-meta {
+    font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    color: var(--text-faint, #697079);
+  }
+
+  /* 04 Buttons ------------------------------------------------------------ */
+  .btn {
+    height: var(--control-height, 28px);
+    padding: 0 var(--space-3, 12px);
+    border-radius: var(--radius, 4px);
+    border: 1px solid transparent;
+    font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    cursor: pointer;
+  }
+  .btn.primary { background: var(--accent, #1D4ED8); color: var(--on-accent, #FFFFFF); }
+  .btn.secondary {
+    background: var(--surface, #FFFFFF);
+    color: var(--text, #1B1F24);
+    border-color: var(--border-strong, #BFC6CD);
+  }
+  .btn.ghost { background: transparent; color: var(--text-muted, #5A636D); }
+  .btn.danger {
+    background: transparent;
+    color: var(--danger, #B3261E);
+    border-color: var(--danger, #B3261E);
+  }
+  /* Disabled loses the fill and keeps its place in the tab order. */
+  .btn[aria-disabled='true'] {
+    background: var(--surface, #FFFFFF);
+    color: var(--text-faint, #697079);
+    border-color: var(--border, #DCE0E5);
+    cursor: default;
+  }
+
+  /* 05 Text input --------------------------------------------------------- */
+  label { display: block; color: var(--text-muted, #5A636D); margin-bottom: var(--space-1, 4px); }
+  .input {
+    width: 100%;
+    box-sizing: border-box;
+    height: var(--control-height, 28px);
+    padding: 0 var(--space-2, 8px);
+    border: 1px solid var(--border-strong, #BFC6CD);
+    border-radius: var(--radius, 4px);
+    background: var(--surface, #FFFFFF);
+    color: var(--text, #1B1F24);
+    font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  }
+  .input::placeholder { color: var(--text-faint, #697079); }
+  .input.invalid { border-color: var(--danger, #B3261E); }
+  .field-error {
+    font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    color: var(--danger, #B3261E);
+    margin-top: var(--space-1, 4px);
+  }
+
+  /* 06 Banner ------------------------------------------------------------- */
+  .banner {
+    background: var(--surface-sunken, #F5F6F7);
+    border-left: 2px solid var(--text-muted, #5A636D);
+    border-radius: var(--radius, 4px);
+    padding: var(--space-2, 8px) var(--space-3, 12px);
+    margin-bottom: var(--space-2, 8px);
+  }
+  .banner.restricted, .banner.degraded { border-left-color: var(--warning, #8A5300); }
+  .banner.restricted .label, .banner.degraded .label { color: var(--warning, #8A5300); }
+  .banner.unavailable, .banner.failed { border-left-color: var(--danger, #B3261E); }
+  .banner.unavailable .label, .banner.failed .label { color: var(--danger, #B3261E); }
+  .banner .label {
+    font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  }
+
+  /* 07 Badge -------------------------------------------------------------- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 var(--space-2, 8px);
+    border: 1px solid var(--border-strong, #BFC6CD);
+    border-radius: var(--radius-full, 9999px);
+    color: var(--text-muted, #5A636D);
+    font: var(--type-mono-sm, 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace);
+  }
+
+  /* 08 Dialog ------------------------------------------------------------- */
+  .stage { position: relative; height: 260px; }
+  .panel-scrim {
+    position: absolute;
+    inset: 40px 0 0;
+    background: rgba(0, 0, 0, 0.32);
+  }
+  .panel-dialog {
+    position: absolute;
+    left: var(--space-4, 16px);
+    right: var(--space-4, 16px);
+    top: 64px;
+    background: var(--surface-raised, #FFFFFF);
+    border: 1px solid var(--border, #DCE0E5);
+    border-radius: var(--radius-lg, 8px);
+    box-shadow: var(--shadow-dialog, 0 8px 24px rgba(0, 0, 0, 0.18));
+    padding: var(--space-4, 16px);
+  }
+  .panel-dialog-title {
+    font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    margin: 0 0 var(--space-3, 12px);
+  }
+  .panel-dialog-actions {
+    display: flex;
+    gap: var(--space-2, 8px);
+    justify-content: flex-end;
+    margin-top: var(--space-4, 16px);
+  }
+
+  /* 09 Capability matrix -------------------------------------------------- */
+  .cap { display: flex; align-items: center; gap: var(--space-2, 8px); padding: var(--row-y, 6px) var(--panel-gutter, 12px); }
+  .dot { width: 8px; height: 8px; border-radius: var(--radius-full, 9999px); flex: none; }
+  .cap .name { flex: 1; }
+  .cap .verdict { font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif); }
+  .ok   { color: var(--success, #116B3C); } .ok-bg   { background: var(--success, #116B3C); }
+  .warn { color: var(--warning, #8A5300); } .warn-bg { background: var(--warning, #8A5300); }
+  .bad  { color: var(--danger, #B3261E); }  .bad-bg  { background: var(--danger, #B3261E); }
+  .cap .versions {
+    font: var(--type-mono-sm, 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace);
+    color: var(--text-faint, #697079);
+  }
+
+  /* 10 Log stream --------------------------------------------------------- */
+  .log { background: var(--surface-sunken, #F5F6F7); margin: 0; padding: 0; list-style: none; }
+  .log li {
+    display: flex;
+    gap: var(--space-2, 8px);
+    padding: 2px var(--panel-gutter, 12px);
+    font: var(--type-mono-sm, 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace);
+  }
+  .log .ts { color: var(--text-faint, #697079); }
+  .log .surface { color: var(--text-muted, #5A636D); }
+  .log .msg { flex: 1; color: var(--text, #1B1F24); }
+  .log .pending { color: var(--warning, #8A5300); }
+
+  /* 11 Inspector table ---------------------------------------------------- */
+  .inspector { width: 100%; border-collapse: collapse; background: var(--surface-sunken, #F5F6F7); }
+  .inspector th, .inspector td {
+    text-align: left;
+    padding: var(--row-y, 6px) var(--panel-gutter, 12px);
+    border-bottom: 1px solid var(--border, #DCE0E5);
+    font: var(--type-mono-sm, 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace);
+    vertical-align: top;
+  }
+  .inspector th { color: var(--text-muted, #5A636D); width: 35%; }
+  .inspector td { color: var(--text, #1B1F24); overflow-wrap: anywhere; }
+
+  /* 12 Progress ----------------------------------------------------------- */
+  .track { height: 2px; background: var(--border, #DCE0E5); }
+  .track > div { height: 2px; background: var(--accent, #1D4ED8); }
+  .progress-note {
+    font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    color: var(--text-muted, #5A636D);
+    padding: var(--space-1, 4px) var(--panel-gutter, 12px) 0;
+  }
+
+  /* 13 Status line -------------------------------------------------------- */
+  .status-line {
+    height: 24px;
+    display: flex;
+    align-items: center;
+    padding: 0 var(--panel-gutter, 12px);
+    border-top: 1px solid var(--border, #DCE0E5);
+    font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+    color: var(--text-faint, #697079);
+  }
+
+  /* 14 Empty state -------------------------------------------------------- */
+  .empty {
+    text-align: center;
+    color: var(--text-muted, #5A636D);
+    padding: var(--space-6, 24px) var(--space-4, 16px);
+  }
+  .empty p { margin: 0 0 var(--space-3, 12px); }
+
+  /* 15 Focus ring --------------------------------------------------------- */
+  :focus { outline: 2px solid var(--accent, #1D4ED8); outline-offset: 1px; }
+  .ring-demo { outline: 2px solid var(--accent, #1D4ED8); outline-offset: 1px; }
+
+  /* Token plates ---------------------------------------------------------- */
+  .plates { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-2, 8px); }
+  .plate { border: 1px solid var(--border, #DCE0E5); border-radius: var(--radius, 4px); overflow: hidden; }
+  .plate .swatch { height: 40px; }
+  .plate .name {
+    padding: var(--space-1, 4px) var(--space-2, 8px);
+    font: var(--type-mono-sm, 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace);
+    color: var(--text-muted, #5A636D);
+    background: var(--surface, #FFFFFF);
+  }
+</style>
+</head>
+
+<body>
+<div class="sheet">
+
+<h1>Visual system — rendered</h1>
+<p class="lede">
+  Every component <code>DESIGN.md</code> Part B specifies, drawn at the 320&nbsp;px panel
+  floor. This page defines no values: it links <code>ui/tokens.css</code> and reaches
+  every one through <code>var(--token, &lt;literal fallback&gt;)</code>. Remove the link and
+  it still renders, at this repository's light-mode defaults — which is the guarantee
+  AD-25 exists to provide, shown rather than asserted. Themes follow the browser.
+</p>
+
+<h2>Colour — neutral ramp</h2>
+<div class="plates">
+  <div class="plate"><div class="swatch" style="background: var(--surface, #FFFFFF)"></div><div class="name">--surface</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--surface-sunken, #F5F6F7)"></div><div class="name">--surface-sunken</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--surface-raised, #FFFFFF)"></div><div class="name">--surface-raised</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--border, #DCE0E5)"></div><div class="name">--border</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--border-strong, #BFC6CD)"></div><div class="name">--border-strong</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--text, #1B1F24)"></div><div class="name">--text</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--text-muted, #5A636D)"></div><div class="name">--text-muted</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--text-faint, #697079)"></div><div class="name">--text-faint</div></div>
+</div>
+
+<h2>Colour — accent and status</h2>
+<div class="plates">
+  <div class="plate"><div class="swatch" style="background: var(--accent, #1D4ED8)"></div><div class="name">--accent</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--accent-soft, #E8EEFC)"></div><div class="name">--accent-soft</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--on-accent, #FFFFFF)"></div><div class="name">--on-accent</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--success, #116B3C)"></div><div class="name">--success</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--warning, #8A5300)"></div><div class="name">--warning</div></div>
+  <div class="plate"><div class="swatch" style="background: var(--danger, #B3261E)"></div><div class="name">--danger</div></div>
+</div>
+
+<h2>Typography — seven roles</h2>
+<div class="panel"><div class="pad">
+  <div style="font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif)">title — panel and dialog headings</div>
+  <div style="font: var(--type-section-label, 600 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif); letter-spacing: var(--type-section-label-tracking, 0.06em); text-transform: uppercase; color: var(--text-muted, #5A636D)">section-label</div>
+  <div style="font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif)">body — the default, and what a list row is set in</div>
+  <div style="font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif)">body-strong — one emphasised word, button labels</div>
+  <div style="font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif); color: var(--text-faint, #697079)">meta — counts, timestamps, badges</div>
+  <div style="font: var(--type-mono, 400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace)">mono — storage values, ciphertext</div>
+  <div style="font: var(--type-mono-sm, 400 11px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace)">mono-sm — log rows, inspector tables</div>
+</div></div>
+
+<h2>01 · Panel header &nbsp; 02 · Module nav &nbsp; 03 · List row &nbsp; 13 · Status line</h2>
+<p class="spec">40&nbsp;px sticky header · 32&nbsp;px nav, only when more than one view is mounted · rows at 6&nbsp;px vertical padding · 24&nbsp;px status line.</p>
+<div class="panel">
+  <header class="panel-header">
+    <h1 class="title">basic-chrome-extension</h1>
+    <button type="button" class="btn ghost" aria-label="Settings">Settings</button>
+  </header>
+  <nav class="module-nav" aria-label="Modules">
+    <button type="button" class="nav-item" aria-current="true">read-page</button>
+    <button type="button" class="nav-item">find-text</button>
+    <button type="button" class="nav-item">secret-box</button>
+  </nav>
+  <div>
+    <button type="button" class="row" title="a very long matched line that the panel truncates with an ellipsis">
+      <span class="row-text">a very long matched line that the panel truncates with an ellipsis</span>
+      <span class="row-meta">1</span>
+    </button>
+    <button type="button" class="row" aria-current="true" title="second match">
+      <span class="row-text">second match</span>
+      <span class="row-meta">2</span>
+    </button>
+    <button type="button" class="row" title="third match">
+      <span class="row-text">third match</span>
+      <span class="row-meta">3</span>
+    </button>
+  </div>
+  <div class="status-line" role="status">12 matches · 2 of 12 selected</div>
+</div>
+
+<h2>04 · Buttons</h2>
+<p class="spec">28&nbsp;px, at most one primary per region. Danger is an outline, not a fill. Disabled is <code>aria-disabled</code> and loses the fill — never the native attribute, which would take the control out of the tab order and its explanation with it.</p>
+<div class="panel"><div class="pad" style="display: flex; gap: 8px; flex-wrap: wrap">
+  <button type="button" class="btn primary">Search</button>
+  <button type="button" class="btn secondary">Cancel</button>
+  <button type="button" class="btn ghost">Close</button>
+  <button type="button" class="btn danger">Lock</button>
+  <button type="button" class="btn secondary" aria-disabled="true">Search</button>
+</div></div>
+
+<h2>05 · Text input</h2>
+<p class="spec">The ring is the only focus signal; the border does not change colour. Invalid is a danger border <em>and</em> a message — never the border alone.</p>
+<div class="panel"><div class="pad">
+  <label for="q">Search term</label>
+  <input class="input" id="q" placeholder="type a phrase">
+  <div style="height: 8px"></div>
+  <label for="q2">Passphrase</label>
+  <input class="input invalid" id="q2" type="password" value="short" aria-invalid="true" aria-describedby="q2e">
+  <div class="field-error" id="q2e">Must be at least 12 characters.</div>
+</div></div>
+
+<h2>06 · Banner</h2>
+<p class="spec">Label, then cause, then what would change it. Status colour is text and a 2&nbsp;px left border — never a filled block, because a filled red panel in a 320&nbsp;px strip reads as a crash. Never stacked more than one deep; a second condition replaces the first.</p>
+<div class="panel"><div class="pad">
+  <div class="banner restricted" role="status"><span class="label">Restricted</span> — Chrome pages cannot be read by extensions. Open a normal page and try again.</div>
+  <div class="banner unavailable" role="alert"><span class="label">Unavailable</span> — Translator is not present in this browser. Requires desktop Chrome 138+.</div>
+  <div class="banner degraded" role="status"><span class="label">Degraded</span> — matches split across inline markup are not found.</div>
+</div></div>
+
+<h2>07 · Badge</h2>
+<p class="spec">Two uses only, tier and Chrome floor, both machine facts and both in monospace. Badges are never coloured — a required Module is not a good Module and an optional one is not a warning.</p>
+<div class="panel"><div class="pad" style="display: flex; gap: 8px">
+  <span class="badge">required</span>
+  <span class="badge">optional</span>
+  <span class="badge">chrome 138</span>
+</div></div>
+
+<h2>08 · Dialog and scrim</h2>
+<p class="spec">The only overlay. At the 320&nbsp;px floor a dialog is 288&nbsp;px wide. The scrim covers the view region and the status line but <strong>not the header</strong>, so the settings link stays reachable. Class names are <code>core/panel.js</code>'s; positioning is the shell's.</p>
+<div class="panel stage">
+  <header class="panel-header">
+    <h1 class="title">basic-chrome-extension</h1>
+    <button type="button" class="btn ghost" aria-label="Settings">Settings</button>
+  </header>
+  <div class="pad" aria-hidden="true">
+    <button type="button" class="row"><span class="row-text">a row behind the scrim</span></button>
+    <button type="button" class="row"><span class="row-text">another row</span></button>
+  </div>
+  <div class="panel-scrim"></div>
+  <div class="panel-dialog" role="dialog" aria-modal="true" aria-labelledby="dt">
+    <h2 class="panel-dialog-title" id="dt" style="text-transform: none; letter-spacing: normal; color: var(--text, #1B1F24)">Unlock secret box</h2>
+    <div class="panel-dialog-content">
+      <label for="pp">Passphrase</label>
+      <input class="input" id="pp" type="password">
+    </div>
+    <div class="panel-dialog-actions">
+      <button type="button" class="btn secondary">Cancel</button>
+      <button type="button" class="btn primary">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<h2>09 · Capability matrix row</h2>
+<p class="spec">Developer Mode only. The 8&nbsp;px dot repeats the status colour and is always redundant with the word — colour is never the only carrier.</p>
+<div class="panel">
+  <div class="cap"><span class="dot ok-bg"></span><span class="name">find-text</span><span class="verdict ok">available</span><span class="versions">105 / 151</span></div>
+  <div class="cap"><span class="dot bad-bg"></span><span class="name">translate-selection</span><span class="verdict bad">unavailable</span><span class="versions">138 / 151</span></div>
+  <div class="cap"><span class="dot warn-bg"></span><span class="name">key-webauthn</span><span class="verdict warn">unknown</span><span class="versions">— / 151</span></div>
+</div>
+
+<h2>10 · Log stream row</h2>
+<p class="spec">Developer Mode only, on a sunken region, rendered as an <code>&lt;ol&gt;</code>. A request with no matching response is marked <code>→req</code> in warning and stays that way — that is how a hung call becomes visible.</p>
+<div class="panel">
+  <ol class="log">
+    <li><span class="ts">12:04:31.882</span><span class="surface">sw</span><span class="msg">msg:find-text/search</span><span>→req</span></li>
+    <li><span class="ts">12:04:31.886</span><span class="surface">cs</span><span class="msg">msg:find-text/search</span><span>←res 4ms</span></li>
+    <li><span class="ts">12:04:32.140</span><span class="surface">panel</span><span class="msg">render 12 matches</span><span></span></li>
+    <li><span class="ts">12:04:33.001</span><span class="surface">sw</span><span class="msg">msg:secret-box/unlock</span><span class="pending">→req</span></li>
+  </ol>
+</div>
+
+<h2>11 · Inspector table</h2>
+<p class="spec">Long values wrap rather than truncate: the point is to show that the secret really is ciphertext, displayed in full and deliberately unreadable.</p>
+<div class="panel">
+  <table class="inspector">
+    <thead><tr><th scope="col">key</th><th scope="col">value</th></tr></thead>
+    <tbody>
+      <tr><td>secret-box:api-token</td><td>Vh8QK2m5wZr1yNfP0aTuB7dXcL9jEoIsMg6R4hCkq3Ay2WnUvD5bJz8FtSx1eGpO</td></tr>
+      <tr><td>config:dev-mode</td><td>true</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>12 · Progress</h2>
+<p class="spec">One form, one case: the first-use translation model download. No spinners — an operation that cannot report progress reports its state as text in the status line.</p>
+<div class="panel">
+  <div class="track"><div style="width: 42%"></div></div>
+  <p class="progress-note">Downloading the translation model — 42%. This happens once.</p>
+</div>
+
+<h2>14 · Empty state</h2>
+<p class="spec">One sentence saying what will appear and what to do to make it appear. No illustration, no icon, no heading. Distinct from "no results", which is what a list shows <em>after</em> its action ran.</p>
+<div class="panel"><div class="empty">
+  <p>Matches will appear here once you search this page.</p>
+  <button type="button" class="btn secondary">Search</button>
+</div></div>
+
+<h2>15 · Focus ring</h2>
+<p class="spec">2&nbsp;px accent with 1&nbsp;px offset, on every focusable element, in both themes, everywhere — never removed, never conditional. Tab through this page to see it; the plate below shows it standing.</p>
+<div class="panel"><div class="pad" style="display: flex; gap: 12px; align-items: center">
+  <button type="button" class="btn secondary ring-demo">Focused</button>
+  <span class="row-meta">and the same ring on a row, an input, and a nav entry</span>
+</div></div>
+
+</div>
+</body>
+</html>

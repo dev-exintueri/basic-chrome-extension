@@ -347,9 +347,9 @@ L1 says "every Module file". A directory walk cannot apply that without being to
 |---|---|---|---|
 | **Module files** | everything under `core/`, `features/<name>/`, `ui/sidepanel/`, `ui/options/`, `ui/popup/`, `policy/` | required (`.json` exempt per *Carrier syntax*) | grouped by Module against that Module's fragment |
 | **Root composition files** | `sw.js`, `ui/tokens.css` | required | **exempt** — they belong to no Module and declare no fragment; the manifest keys they need are base keys (below) |
-| **Not walked** | `tools/`, `e2e/`, `node_modules/`, `AGENTS.md`, `README.md`, `LICENSE`, `DESIGN.md`, `EXPERIENCE.md` | none | — |
+| **Not walked** | `tools/`, `e2e/`, `sample/`, `node_modules/`, `AGENTS.md`, `README.md`, `LICENSE`, `DESIGN.md`, `EXPERIENCE.md` | none | — |
 
-`AGENTS.md` is not walked for L1 but *is* scanned for L13. `tools/` and `e2e/` are not extension code (AD-3) and carry no annotation obligation.
+`AGENTS.md` is not walked for L1 but *is* scanned for L13. `tools/` and `e2e/` are not extension code (AD-3) and carry no annotation obligation. Neither is `sample/`: it is this document's rendered counterpart, no manifest key points at it and nothing imports it, so it ships inside a clone as documentation and Chrome never parses it. A `.html` file elsewhere in the tree — a composition root's `shell.html` — **is** a Module file and does carry a block, in the `<!-- … -->` carrier.
 
 **The base manifest keys** belong to the repository rather than to any Module, so no fragment declares them and L12 never sees them: `manifest_version`, `name`, `version`, `description`, `icons`, `background.service_worker`, `background.type`, and `action.default_popup`. Every other key in the root `manifest.json` is contributed by some Module's fragment, which is what makes the Acceptance Check's merge assertion (AD-17) checkable.
 
@@ -599,6 +599,10 @@ Constants this document owns, so that no Module has to invent one.
 ---
 
 # Part B — Visual System
+
+**Every component below is drawn in [`sample/ui.html`](./sample/ui.html).** Open it in a browser to see the system rendered at the 320 px panel floor, in whichever theme the browser is set to. The sample defines no values of its own: it links `ui/tokens.css` and reaches every colour, size, space and radius through `var(--token, <literal fallback>)`, which is the same contract AR-25 and AD-25 put on a Module's `view.css`. Removing that one `<link>` leaves the page rendering correctly at this repository's light-mode defaults — the guarantee AD-25 exists to provide, demonstrated rather than asserted, and measured by `_bmad-output/dev-harness/sample-check.cjs`, which renders the page twice and compares every computed property.
+
+**This document remains normative.** The sample shows what the rules produce; it does not replace them, because most of what follows is a prohibition — one accent per region, no filled status block, no eighth type role — and a rendering can only show the permitted case. Where the two disagree, this document wins and the sample is the defect.
 
 ## Brand & Style
 
@@ -922,6 +926,7 @@ The 24 px strip at the foot of the panel, `{typography.meta}` `{colors.text-fain
 
 ## Related documents
 
+- **[`sample/ui.html`](./sample/ui.html)** — Part B rendered. Every component, drawn at the 320 px panel floor, consuming `ui/tokens.css` through the `var(--token, <fallback>)` contract rather than restating a single value. Subordinate to this document: it shows what the rules produce and cannot express what they forbid.
 - **[EXPERIENCE.md](./EXPERIENCE.md)** — behaviour, information architecture, state semantics, interaction, accessibility, and key flows. Subordinate to this document.
 - **Key-screen mocks** — [`_bmad-output/planning-artifacts/ux-designs/ux-basic-chrome-extension-2026-08-08/mockups/key-screens.html`](./_bmad-output/planning-artifacts/ux-designs/ux-basic-chrome-extension-2026-08-08/mockups/key-screens.html). Reference renderings of the side panel, options surface, dialog, and Developer Mode in both themes. **This document wins on conflict with any mock.**
 - **PRD** — `_bmad-output/planning-artifacts/prds/prd-basic-chrome-extension-2026-08-08/prd.md`, with rejected alternatives in `addendum.md`. The addendum's §C pitfall register is **inlined above** under *Pitfall Register*; the copy in this document is the normative one.
