@@ -18,10 +18,19 @@ core/render.js, core/errors.js
    first has to be said.
 
    ```html
-   <div id="views"></div>
-   <div id="status" role="status"></div>
-   <div id="dialog-root"></div>
+   <div id="view-region">
+     <div id="views"></div>
+     <div id="status" role="status"></div>
+     <div id="dialog-root"></div>
+   </div>
    ```
+
+   **The wrapper is not decoration.** `#dialog-root` is positioned `absolute; inset: 0`, so it
+   resolves against the nearest positioned ancestor. Without one, the scrim resolves against the
+   viewport and covers the whole panel including its header — which is the outcome DESIGN.md names
+   as "a dialog that traps the user in a 288 px box with no visible exit". Give the wrapper
+   `position: relative` and put nothing in it but the view region and the status line, and the
+   scrim covers exactly what it is specified to cover.
 
    Write `#status` and `#dialog-root` on one line each, with no whitespace between the tags. Both
    are styled through `:empty` — the status strip collapses to zero height while it has nothing to
@@ -46,10 +55,12 @@ core/render.js, core/errors.js
    }
    ```
 
-   `side_panel` and the `sidePanel` permission are Chrome 114. The 116 is
-   `chrome.sidePanel.open()`, the only route from a toolbar gesture to the panel and therefore the
-   version at which this repository's own demonstration works end to end. A target extension that
-   opens its panel some other way can merge at 114 and lose nothing.
+   `side_panel` and the `sidePanel` permission are Chrome 114. The 116 is the floor the base
+   manifest declares, fixed by `chrome.sidePanel.open()` — the only route from a toolbar gesture to
+   this panel, and the call the launcher surface makes. **Merge the fragment as written.** A target
+   extension whose panel is reached some other way needs a floor of 114 for these two keys and can
+   say so in its own manifest, but that is a decision about its build rather than a variant of this
+   fragment, and the merge rule takes the maximum in either case.
 
 4. Mount each Module by hand. There is no registry and no auto-discovery, so every Module adds
    exactly two lines to your shell script — one `import` at the top and one call inside the

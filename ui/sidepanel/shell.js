@@ -135,24 +135,33 @@ function moduleNameOf(section) {
  * listener on the event's own target runs in the at-target phase, so dispatching
  * on `document` reaches it.
  *
- * @returns {void}
+ * **The post-condition is checked, not assumed.** `settle()` runs synchronously
+ * inside `dispatchEvent`, so one re-query afterwards is the whole cost. A
+ * `[role="dialog"]` that `core/panel.js` did not build -- a host surface, or the
+ * full-panel overlay this file's own `@scales-to` contemplates -- matches the
+ * guard's precondition and ignores the `Escape`, and hiding the view anyway
+ * would produce exactly the leak this function exists to prevent.
+ *
+ * @returns {boolean} Whether `#dialog-root` is clear afterwards.
  */
 function closeAnyDialog() {
   const root = document.getElementById('dialog-root');
   if (root === null || root.querySelector('[role="dialog"]') === null) {
-    return;
+    return true;
   }
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+  return root.querySelector('[role="dialog"]') === null;
 }
 
 /**
  * Show one view and hide the rest.
  *
- * The order is load-bearing: close the dialog, save the outgoing scroll
- * position, toggle, restore the incoming one. Closing last would hide the view
- * first and produce exactly the leak `closeAnyDialog` exists to prevent, and
- * saving after the toggle would read the scroll position of whatever is on
- * screen by then.
+ * The order is load-bearing: save the outgoing scroll position, close the
+ * dialog, toggle, restore the incoming one. Closing last would hide the view
+ * first and produce exactly the leak `closeAnyDialog` exists to prevent; saving
+ * after the toggle would read the scroll position of whatever is on screen by
+ * then; and saving after the close would record where `settle()`'s
+ * `opener.focus()` scrolled to rather than where the user was reading.
  *
  * Selection is exclusive and is carried as `aria-current="true"` --
  * `aria-selected` is invalid on a `<button>` and screen readers ignore it
@@ -166,19 +175,37 @@ function switchTo(name) {
   if (views === null) {
     return;
   }
-  closeAnyDialog();
+  // Saved BEFORE the dialog closes, and that order is measured rather than
+  // assumed: core/panel.js's settle() calls opener.focus(), and focusing an
+  // element inside #views scrolls it into view. Closing first would record the
+  // opener's row as the user's reading position.
   if (active !== null) {
     scrollTops.set(active, views.scrollTop);
+  }
+  // A dialog that would not close keeps the user where they are, with it open.
+  // The alternative is hiding the view underneath it, which is the leak
+  // closeAnyDialog() exists to prevent -- and which nothing would report.
+  if (!closeAnyDialog()) {
+    return;
   }
   for (const section of sections()) {
     section.hidden = moduleNameOf(section) !== name;
   }
   active = name;
   views.scrollTop = scrollTops.get(name) ?? 0;
-  for (const item of document.querySelectorAll('.nav-item')) {
+  // Scoped to the nav. A document-wide `.nav-item` sweep would add and remove
+  // aria-current on a Module's own controls if it happened to use the class
+  // name, corrupting that view's selection state on every switch -- the same
+  // collision shell.css anchors every selector to avoid.
+  const nav = document.getElementById('module-nav');
+  for (const item of nav === null ? [] : nav.querySelectorAll('.nav-item')) {
     const current = item.getAttribute('data-module') === name;
     if (current) {
       item.setAttribute('aria-current', 'true');
+      // The nav scrolls horizontally rather than wrapping, so with enough
+      // Modules the newly-current entry can sit outside the visible strip and
+      // the panel shows an active view with nothing marking which one it is.
+      item.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     } else {
       item.removeAttribute('aria-current');
     }
@@ -211,7 +238,10 @@ function buildNav() {
       class: 'nav-item',
       'data-module': name,
       onclick: () => switchTo(name),
-    }, section.getAttribute('data-label') ?? name));
+      // `||`, not `??`: getAttribute returns '' for a present-but-empty
+      // attribute, and ?? only fires on null. An empty label is a focusable
+      // control with no accessible name, which is the NFR-7 floor.
+    }, section.getAttribute('data-label') || name));
   }
 }
 
@@ -243,13 +273,21 @@ async function openOptions() {
     await chrome.runtime.openOptionsPage();
     return { ok: true, data: null };
   } catch (cause) {
+    // Branch on a fact rather than on Chrome's prose. Every rejection used to
+    // report "this build declares no options page", which is written to become
+    // false the moment story 2.4 declares options_ui -- and would then tell the
+    // user to install a version they already have. The manifest is the thing
+    // that actually knows, and reading it costs nothing.
+    const declared = chrome.runtime.getManifest().options_ui !== undefined;
     return {
       ok: false,
-      error: makeError(
-        'unavailable',
-        'This build declares no options page. It appears once a version declaring options_ui is installed.',
-        cause,
-      ),
+      error: declared
+        ? makeError('failed', 'The options page did not open. Try again.', cause)
+        : makeError(
+          'unavailable',
+          'This build declares no options page. It appears once a version declaring options_ui is installed.',
+          cause,
+        ),
     };
   }
 }
@@ -298,8 +336,22 @@ function wireSettings() {
   if (settings === null) {
     return;
   }
+  // One call in flight at a time. Two clicks before the first settles start two
+  // independent calls whose banners race: if the first fails and the second
+  // succeeds the error is silently cleared, and if the order reverses an error
+  // banner stands over an options page that did open. The button carries
+  // aria-disabled while the call is out and keeps its label and its place in the
+  // tab order -- never the native attribute (UX-DR17, EXPERIENCE.md).
+  let inFlight = false;
   settings.addEventListener('click', () => {
+    if (inFlight) {
+      return;
+    }
+    inFlight = true;
+    settings.setAttribute('aria-disabled', 'true');
     void openOptions().then((result) => {
+      inFlight = false;
+      settings.removeAttribute('aria-disabled');
       showBanner(result.ok ? null : result.error);
     });
   });

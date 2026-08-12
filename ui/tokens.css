@@ -89,7 +89,7 @@
   --shadow-dialog: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 
-/* Dark redefines the fourteen colour tokens and nothing else. Type, spacing,
+/* Dark redefines the fifteen colour tokens and nothing else. Type, spacing,
  * radii and the shadow are theme-independent; a token missing from this block
  * keeps its light value and renders wrong without raising anything. */
 
