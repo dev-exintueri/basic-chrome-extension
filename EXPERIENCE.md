@@ -12,13 +12,13 @@ sources:
 
 # EXPERIENCE.md — Neutral Instrument
 
-> Subordinate to [DESIGN.html](./DESIGN.html). DESIGN.html owns the repository conventions and the visual system; this document owns how things behave. Where the two disagree, DESIGN.html wins and this document is the defect. Both win over any mock, wireframe, or existing code.
+> Subordinate to [DESIGN.md](./DESIGN.md). DESIGN.md owns the repository conventions and the visual system; this document owns how things behave. Where the two disagree, DESIGN.md wins and this document is the defect. Both win over any mock, wireframe, or existing code.
 
 ## Foundation
 
-**Multi-surface Chrome MV3 extension, desktop only.** No UI system. No framework. Views are plain DOM writes through a small render helper; DESIGN.html is the visual identity reference.
+**Multi-surface Chrome MV3 extension, desktop only.** No UI system. No framework. Views are plain DOM writes through a small render helper; DESIGN.md is the visual identity reference.
 
-Chrome 151 is the version the platform research was conducted against — an anchor for its findings, not a floor for the code. The floor is **Chrome 116**, declared once as `minimum_chrome_version` in the root `manifest.json`, and every claim in this document assumes it. It is *not* what `@chrome-min baseline` resolves to: `baseline` means a file adds no floor of its own, and every numeric `@chrome-min` states an absolute Chrome version independent of this repository's floor (DESIGN.html §*Per-tag grammar*, §*Fixed Numbers*).
+Chrome 151 is the version the platform research was conducted against — an anchor for its findings, not a floor for the code. The floor is **Chrome 116**, declared once as `minimum_chrome_version` in the root `manifest.json`, and every claim in this document assumes it. It is *not* what `@chrome-min baseline` resolves to: `baseline` means a file adds no floor of its own, and every numeric `@chrome-min` states an absolute Chrome version independent of this repository's floor (DESIGN.md §*Per-tag grammar*, §*Fixed Numbers*).
 
 **This product has two audiences and they are not its users.** The Reference Extension is a demonstration vehicle, not a published product (PRD §3.2, §11) — it has no end users. Its interface exists to be *read as an implementation* by a **Consuming Agent** and *evaluated as a working example* by a **Consuming Developer**. The only person who drives it end to end is the maintainer, proving that what the code claims is true.
 
@@ -52,13 +52,13 @@ For this repository the documentation *is* product surface (PRD §5.9), so it ha
 | `README.md` | *What is here, and what does it deliberately not do?* | Three-step quickstart, Module inventory with Tier and `@chrome-min`, the copy-paste contract and how to verify it, the tools to use instead, licence |
 | Root `AGENTS.md` | *What are the repository-wide conventions and every runnable command?* | Commands verbatim, never prose descriptions of intent |
 | Annotation Block | *Should I take this, and what will it cost me?* | Six tags, six lines, travels inside the source file |
-| Module `AGENTS.md` | *How do I take it?* | Five headings, executable steps, never restates a tag (DESIGN.html L13) |
+| Module `AGENTS.md` | *How do I take it?* | Five headings, executable steps, never restates a tag (DESIGN.md L13) |
 
 → Composition reference: `_bmad-output/planning-artifacts/ux-designs/ux-basic-chrome-extension-2026-08-08/mockups/key-screens.html`. Spines win on conflict.
 
 ## Voice and Tone
 
-Microcopy only. Aesthetic posture lives in `DESIGN.html.Brand & Style`. **English, always** (NFR-9).
+Microcopy only. Aesthetic posture lives in `DESIGN.md.Brand & Style`. **English, always** (NFR-9).
 
 The extension talks like documentation, not like an app. It never congratulates, never apologises, and never hides a platform fact behind a friendlier one — hiding the fact is the one thing this repository exists to stop.
 
@@ -89,7 +89,7 @@ A message that cannot name which of the four it is has not diagnosed the problem
 
 ## Component Patterns
 
-Behavioural. Visual specs live in `DESIGN.html.Components`.
+Behavioural. Visual specs live in `DESIGN.md.Components`.
 
 | Component | Use | Behavioural rules |
 |---|---|---|
@@ -97,7 +97,7 @@ Behavioural. Visual specs live in `DESIGN.html.Components`.
 | List row | Every result set | Exclusive selection within its list, carried as `aria-current="true"`. Activating a row acts on the page; it does not navigate. Full value in `title` when truncated. |
 | Primary button | One per region | Commits the region's action. Carries `aria-disabled` while the action is in flight — never the native `disabled` attribute, which would drop it from the tab order — with the label unchanged; no "Loading…" swap. The status line carries the verb. |
 | Status line | Panel foot | The only success channel. Standing count, verb-in-progress during an action, then the outcome for 3 seconds before reverting to the count. An action whose success is otherwise invisible must land here. |
-| Text input | Search, dialog fields | Debounced only where a write is involved (750 ms, DESIGN.html Fixed Numbers). Search is submit-driven, not as-you-type — a keystroke-driven page walk fights NFR-10. |
+| Text input | Search, dialog fields | Debounced only where a write is involved (750 ms, DESIGN.md Fixed Numbers). Search is submit-driven, not as-you-type — a keystroke-driven page walk fights NFR-10. |
 | Banner | Any unrequested state | One at a time. A new condition replaces the old. Never auto-dismissed. Cleared when the user changes the input that caused it. |
 | Dialog | One focused input | Opens with focus on the first field, traps focus, `Escape` cancels, `Enter` in the last field commits, focus returns to the opener on close. |
 | Capability matrix row | Developer Mode | Probes on view mount, not on extension start. A probe that costs a user gesture reports `unknown` until the gesture happens. |
@@ -140,7 +140,7 @@ Every Module whose runtime precondition is unmet **reports the reason**; it does
 
 ## Accessibility Floor
 
-Behavioural. Visual contrast lives in `DESIGN.html.Colors`.
+Behavioural. Visual contrast lives in `DESIGN.md.Colors`.
 
 The bar is PRD NFR-7 and it is deliberately two checkable conditions rather than a conformance claim this repository does not verify:
 
@@ -150,7 +150,7 @@ The bar is PRD NFR-7 and it is deliberately two checkable conditions rather than
 How that lands:
 
 - Rows are `<button>`, not clickable `<div>`s. Toggles are `<input type="checkbox">`. Native semantics before ARIA, always. Selection on a row is `aria-current="true"` — `aria-selected` is invalid on a `<button>` and screen readers ignore it.
-- The focus ring is never removed and never conditional (DESIGN.html *Focus ring*). A side panel is a keyboard surface as much as a pointer one.
+- The focus ring is never removed and never conditional (DESIGN.md *Focus ring*). A side panel is a keyboard surface as much as a pointer one.
 - Disabled controls keep `aria-disabled` and stay focusable, so the explanation of *why* they are disabled remains reachable. The native `disabled` attribute is not used on any button in the panel.
 - Banners are `role="status"` for `warning` and `role="alert"` for `danger`. The banner container is **present in the DOM from mount and populated on change** — a live region inserted at the same moment as its text is frequently not announced at all.
 - The status line is a `role="status"` live region, so a success that only appears there is spoken as well as drawn.

@@ -78,7 +78,7 @@ import { get, set, subscribe } from './storage.js';
  */
 /** @typedef {NoteEntry | TraceLogEntry} LogEntry */
 
-/** DESIGN.html owns this number so that no Module invents one. */
+/** DESIGN.md owns this number so that no Module invents one. */
 const CAPACITY = 500;
 
 /**
@@ -102,7 +102,7 @@ const FIELD_LIMIT = 200;
 /**
  * Read directly from `local` because `core/config.js` does not exist yet. When
  * it does, this read moves behind it and the default below stops being declared
- * in two places. `local` is the area DESIGN.html gives machine-local flags.
+ * in two places. `local` is the area DESIGN.md gives machine-local flags.
  */
 const DEV_MODE_KEY = 'cfg:dev-mode';
 const DEV_MODE_DEFAULT = false;

@@ -7,7 +7,7 @@
  * @scales-to A theme beyond light and dark -> a downstream html[data-theme] block.
  */
 
-/* Every value here is the literal from DESIGN.html's token block. This file
+/* Every value here is the literal from DESIGN.md's frontmatter. This file
  * declares custom properties and applies none of them: component rules live in
  * ui/sidepanel/shell.css and in each Module's view.css, which reach every token
  * through var(--token, <literal fallback>) so a slice copied where this file
@@ -66,7 +66,7 @@
   --space-6: 24px;
   --space-8: 32px;
 
-  /* Named layout constants (DESIGN.html Fixed Numbers) */
+  /* Named layout constants (DESIGN.md Fixed Numbers) */
   --panel-gutter: 12px;
   --options-gutter: 24px;
   --row-y: 6px;

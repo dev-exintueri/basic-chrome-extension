@@ -56,7 +56,7 @@ import { el, clear } from './render.js';
  */
 const MODULE_NAME = /^[a-z][a-z0-9-]*$/;
 
-/** The outcome dwell time. DESIGN.html owns this number; no Module invents one. */
+/** The outcome dwell time. DESIGN.md owns this number; no Module invents one. */
 const FLASH_MS = 3000;
 
 /**
@@ -71,7 +71,7 @@ const DIALOG_TITLE_ID = 'panel-dialog-title';
 /**
  * What `Tab` can reach. Native `disabled` is excluded because such an element is
  * genuinely out of the tab order; `aria-disabled` is not, which is the whole
- * reason DESIGN.html disables with the attribute rather than the property -- a
+ * reason DESIGN.md disables with the attribute rather than the property -- a
  * control a keyboard user cannot reach takes its explanation with it.
  *
  * `input[type="hidden"]` is excluded because it matches every other clause and
@@ -85,7 +85,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([t
 /**
  * Does `Enter` on this element mean "commit the dialog"?
  *
- * DESIGN.html says *`Enter` in the last field commits*, and a field is an input
+ * DESIGN.md says *`Enter` in the last field commits*, and a field is an input
  * the user types or chooses in. A button or a link that happens to be the last
  * focusable element of the content region is not one, and committing there
  * would also `preventDefault()` the activation the user actually asked for --
@@ -245,7 +245,7 @@ function dialogSpec(spec) {
  * scrim and the dialog into it and empties it again through `core/render.js`'s
  * `clear()`. The already-open check above is what keeps that ownership honest.
  *
- * The scrim is an element with a class and no style. DESIGN.html puts it over the
+ * The scrim is an element with a class and no style. DESIGN.md puts it over the
  * view region and the status line but **not** over the panel header, so that the
  * settings link stays reachable -- and that is a position, which `shell.css` owns.
  *
@@ -391,7 +391,7 @@ function openIn(root, spec) {
         return;
       }
       if (event.key === 'Enter') {
-        // DESIGN.html: "Enter in the last field commits." Read literally, and
+        // DESIGN.md: "Enter in the last field commits." Read literally, and
         // `commitsOnEnter` is what makes "field" mean a field: the last
         // focusable element of the content region may be a button, and
         // committing there would suppress its own activation.
@@ -483,7 +483,7 @@ export function panelFor(moduleName) {
    * recorded and not drawn, and the revert draws it when the three seconds are
    * up. Otherwise the ordinary shape of an action -- flash the outcome, then
    * re-render and report the new count -- would replace `saved` after however
-   * long the re-render took, and the outcome DESIGN.html gives three seconds would
+   * long the re-render took, and the outcome DESIGN.md gives three seconds would
    * get a few hundred milliseconds instead, with nothing raised.
    *
    * @param {string} text
