@@ -29,6 +29,12 @@
 
 <style>
   /* Page chrome for the sample itself. Not part of the visual system. */
+  /* Chrome draws native controls, form widgets and scrollbars in light UA
+   * styling over the dark surface without this -- visible in the input and
+   * dialog sections below. It is not a custom property and has no var()
+   * fallback, so ui/tokens.css cannot carry it: every document that consumes
+   * the token sheet declares it for itself. */
+  :root { color-scheme: light dark; }
   body {
     margin: 0;
     background: var(--surface-sunken, #F5F6F7);
@@ -70,6 +76,7 @@
 
   /* 01 Panel header ------------------------------------------------------- */
   .panel-header {
+    box-sizing: border-box;
     height: 40px;
     display: flex;
     align-items: center;
@@ -85,6 +92,7 @@
 
   /* 02 Module nav --------------------------------------------------------- */
   .module-nav {
+    box-sizing: border-box;
     height: 32px;
     display: flex;
     gap: var(--space-1, 4px);
@@ -94,6 +102,7 @@
     overflow-x: auto;
   }
   .nav-item {
+    box-sizing: border-box;
     background: none;
     border: 0;
     border-bottom: 2px solid transparent;
@@ -137,6 +146,7 @@
 
   /* 04 Buttons ------------------------------------------------------------ */
   .btn {
+    box-sizing: border-box;
     height: var(--control-height, 28px);
     padding: 0 var(--space-3, 12px);
     border-radius: var(--radius, 4px);
@@ -203,6 +213,7 @@
 
   /* 07 Badge -------------------------------------------------------------- */
   .badge {
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
     height: 20px;
@@ -218,7 +229,7 @@
   .panel-scrim {
     position: absolute;
     inset: 40px 0 0;
-    background: rgba(0, 0, 0, 0.32);
+    background: var(--scrim, rgba(0, 0, 0, 0.32));
   }
   .panel-dialog {
     position: absolute;
@@ -291,6 +302,7 @@
 
   /* 13 Status line -------------------------------------------------------- */
   .status-line {
+    box-sizing: border-box;
     height: 24px;
     display: flex;
     align-items: center;

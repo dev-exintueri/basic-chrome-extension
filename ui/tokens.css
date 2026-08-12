@@ -34,6 +34,10 @@
   --warning: #8A5300;
   --danger: #B3261E;
 
+  /* The dialog scrim. Theme-dependent, so it is a token: a literal in a
+   * composition root would need a second prefers-color-scheme block there. */
+  --scrim: rgba(0, 0, 0, 0.32);
+
   /* Two system stacks. No font file ships and none is requested. */
   --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
@@ -107,5 +111,7 @@
     --success: #5FD08C;
     --warning: #E2B04A;
     --danger: #F1867E;
+
+    --scrim: rgba(0, 0, 0, 0.56);
   }
 }

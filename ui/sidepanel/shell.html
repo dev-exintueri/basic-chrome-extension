@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--
+@tier required
+@chrome-min 116
+@permissions sidePanel
+@pitfall A newline inside #status or #dialog-root is a text node, so :empty stops matching.
+@alternative setPanelBehavior openPanelOnActionClick at 114 -- no gesture then reaches the popup.
+@scales-to A surface must cover every view at once -> hide #panel-body, never each section.
+-->
+<meta charset="utf-8">
+<title>basic-chrome-extension</title>
+
+<!--
+  The side panel document, and the only place the three landmarks core/panel.js
+  acts on are declared: #views, #status and #dialog-root (AD-10). A consumer's
+  own shell declares the same three and gets the same services; that is the whole
+  contract, and it is why no view ever imports this file.
+
+  The token sheet is linked first so shell.css can override nothing and consume
+  everything. Both stylesheets reach every value through var(--token, <literal>),
+  so a shell copied without ui/tokens.css still renders at this repository's
+  light-mode defaults instead of unstyled (AD-25).
+-->
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="shell.css">
+<script type="module" src="shell.js"></script>
+</head>
+
+<body>
+<header class="panel-header">
+  <h1 class="title">basic-chrome-extension</h1>
+  <button type="button" class="btn ghost" id="settings">Settings</button>
+</header>
+
+<!--
+  Everything the dialog scrim covers, and nothing it does not. UX-DR12 keeps the
+  header reachable while a dialog is open, so the scrim's extent is expressed by
+  this element's bounds rather than by an offset that has to be kept equal to the
+  header's height in two places.
+-->
+<div id="panel-body">
+  <nav class="module-nav" id="module-nav" aria-label="Modules" hidden></nav>
+
+  <!--
+    Present from mount and populated on change: a live region inserted at the
+    same moment as its text is frequently not announced at all (EXPERIENCE.md).
+    The role lives on the container for that reason, not on the banner.
+  -->
+  <div id="banner" role="alert"></div>
+
+  <div id="views"></div>
+
+  <!--
+    Written on one line on purpose. :empty is what collapses the strip when the
+    active view has nothing to say, and a formatting newline is a text node that
+    stops it matching -- a 24px strip that never goes away, with nothing raised.
+    The same applies to #dialog-root, which core/panel.js empties with clear().
+  -->
+  <div class="status-line" id="status" role="status"></div>
+  <div id="dialog-root"></div>
+</div>
+</body>
+</html>
