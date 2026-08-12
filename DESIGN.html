@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DESIGN.html - Neutral Instrument</title>
+<!--
+  The design document required by PRD FR-30. Every rule this repository's
+  Modules conform to lives here.
+
+  THE TOKEN BLOCK BELOW IS THE SINGLE SOURCE OF EVERY LITERAL IN THE VISUAL
+  SYSTEM. ui/tokens.css declares them and _bmad-output/dev-harness's gate reads
+  this block at run time to check that it does -- so a value edited here and
+  nowhere else fails the gate rather than drifting silently. Keep it as YAML:
+  re-encoding it as markup would make the gate parse a transformation of the
+  data instead of the data.
+-->
+<script type="application/yaml" id="design-tokens">
+name: Neutral Instrument
+description: The repository constitution for the Chrome Extension MV3 Reference Starter Repo — the annotation vocabulary, surface responsibility model, tier criteria, and visual system every Module conforms to.
+status: final
+created: 2026-08-08
+updated: 2026-08-09
+colors:
+  # Light. Every value below is the literal used in CSS custom properties on :root.
+  surface: '#FFFFFF'
+  surface-sunken: '#F5F6F7'
+  surface-raised: '#FFFFFF'
+  border: '#DCE0E5'
+  border-strong: '#BFC6CD'
+  text: '#1B1F24'
+  text-muted: '#5A636D'
+  text-faint: '#697079'
+  accent: '#1D4ED8'
+  accent-soft: '#E8EEFC'
+  on-accent: '#FFFFFF'
+  success: '#116B3C'
+  warning: '#8A5300'
+  danger: '#B3261E'
+  # Dark. Redefined under prefers-color-scheme: dark; nothing else changes.
+  surface-dark: '#17191C'
+  surface-sunken-dark: '#101215'
+  surface-raised-dark: '#1E2126'
+  border-dark: '#2C3037'
+  border-strong-dark: '#454C55'
+  text-dark: '#E7EAEE'
+  text-muted-dark: '#A6AEB8'
+  text-faint-dark: '#8A929B'
+  accent-dark: '#8FB2F7'
+  accent-soft-dark: '#21304D'
+  on-accent-dark: '#12141A'
+  success-dark: '#5FD08C'
+  warning-dark: '#E2B04A'
+  danger-dark: '#F1867E'
+typography:
+  family-ui:
+    fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+  family-mono:
+    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace"
+  title:
+    fontFamily: '{typography.family-ui.fontFamily}'
+    fontSize: 15px
+    fontWeight: '600'
+    lineHeight: '1.35'
+  section-label:
+    fontFamily: '{typography.family-ui.fontFamily}'
+    fontSize: 11px
+    fontWeight: '600'
+    lineHeight: '1.4'
+    letterSpacing: 0.06em
+  body:
+    fontFamily: '{typography.family-ui.fontFamily}'
+    fontSize: 13px
+    fontWeight: '400'
+    lineHeight: '1.5'
+  body-strong:
+    fontFamily: '{typography.family-ui.fontFamily}'
+    fontSize: 13px
+    fontWeight: '600'
+    lineHeight: '1.5'
+  meta:
+    fontFamily: '{typography.family-ui.fontFamily}'
+    fontSize: 11px
+    fontWeight: '400'
+    lineHeight: '1.4'
+  mono:
+    fontFamily: '{typography.family-mono.fontFamily}'
+    fontSize: 12px
+    fontWeight: '400'
+    lineHeight: '1.5'
+  mono-sm:
+    fontFamily: '{typography.family-mono.fontFamily}'
+    fontSize: 11px
+    fontWeight: '400'
+    lineHeight: '1.45'
+rounded:
+  sm: 3px
+  DEFAULT: 4px
+  md: 6px
+  lg: 8px
+  full: 9999px
+spacing:
+  unit: 4px
+  '1': 4px
+  '2': 8px
+  '3': 12px
+  '4': 16px
+  '5': 20px
+  '6': 24px
+  '8': 32px
+  panel-gutter: 12px
+  options-gutter: 24px
+  row-y: 6px
+  control-height: 28px
+  panel-min-width: 320px
+  options-column: 560px
+components:
+  button-primary:
+    background: '{colors.accent}'
+    foreground: '{colors.on-accent}'
+    height: '{spacing.control-height}'
+    radius: '{rounded.DEFAULT}'
+    border: 'none'
+  button-secondary:
+    background: '{colors.surface}'
+    foreground: '{colors.text}'
+    height: '{spacing.control-height}'
+    radius: '{rounded.DEFAULT}'
+    border: '1px solid {colors.border-strong}'
+  button-ghost:
+    background: 'transparent'
+    foreground: '{colors.text-muted}'
+    height: '{spacing.control-height}'
+    radius: '{rounded.DEFAULT}'
+    border: 'none'
+  text-input:
+    background: '{colors.surface}'
+    foreground: '{colors.text}'
+    height: '{spacing.control-height}'
+    radius: '{rounded.DEFAULT}'
+    border: '1px solid {colors.border-strong}'
+    typography: '{typography.body}'
+  list-row:
+    background: 'transparent'
+    background-selected: '{colors.accent-soft}'
+    foreground: '{colors.text}'
+    padding: '{spacing.row-y} {spacing.panel-gutter}'
+    marker-selected: '{colors.accent}'
+    radius: '{rounded.sm}'
+  banner:
+    radius: '{rounded.DEFAULT}'
+    padding: '{spacing.2} {spacing.3}'
+    border-left: '2px solid'
+    typography: '{typography.body}'
+  badge-tier:
+    radius: '{rounded.full}'
+    padding: '0 {spacing.2}'
+    typography: '{typography.meta}'
+    border: '1px solid {colors.border-strong}'
+    foreground: '{colors.text-muted}'
+  dialog:
+    background: '{colors.surface-raised}'
+    radius: '{rounded.lg}'
+    border: '1px solid {colors.border}'
+    shadow: '0 8px 24px rgba(0, 0, 0, 0.18)'
+    padding: '{spacing.4}'
+  log-row:
+    background: 'transparent'
+    typography: '{typography.mono-sm}'
+    padding: '2px {spacing.panel-gutter}'
+    timestamp-foreground: '{colors.text-faint}'
+  focus-ring:
+    outline: '2px solid {colors.accent}'
+    outline-offset: '1px'
+</script>
+</head>
+<body>
+<h1 id="designmd-—-neutral-instrument">DESIGN.html — Neutral Instrument</h1>
+<p>This is the design document required by <strong>PRD FR-30</strong>. It is the single place every Module conforms to, and it exists before any Module implementation lands.</p>
+<p>It carries two things that are usually separate documents, because this repository is not an end-user product:</p>
+<ul><li><strong>Part A — Repository Conventions.</strong> The annotation vocabulary, the boundary between an Annotation Block and a module <code>AGENTS.md</code>, the Tier criteria, and the Surface responsibility model. These are the rules a <strong>Consuming Agent</strong> must be able to apply without reading any code.</li><li><strong>Part B — Visual System.</strong> Colors, typography, layout, shapes, and component specs for the side panel, the options surface, and dialogs — in light and dark — implementable with plain DOM writes and a small render helper.</li></ul>
+<h2 id="reading-order-and-precedence">Reading Order and Precedence</h2>
+<p><strong>Audience.</strong> The primary reader is a Consuming Agent: an LLM reading this repository in order to generate a <em>different</em> extension. The secondary reader is a Consuming Developer copying one Module folder into an unrelated project. Neither of them will read this document end to end before acting, so every rule here is stated so it can be applied from a single section.</p>
+<p><strong>Precedence, highest first:</strong></p>
+<ol><li><strong>PRD</strong> — <code>_bmad-output/planning-artifacts/prds/prd-basic-chrome-extension-2026-08-08/prd.md</code>. Requirements.</li><li><strong>DESIGN.html</strong> — this file. Conventions and visual system. Wins over any mock, wireframe, or existing code.</li><li><strong>EXPERIENCE.md</strong> — behaviour, information architecture, state semantics, interaction, accessibility. Subordinate to this file; where the two disagree, this file wins and EXPERIENCE.md is the defect.</li><li><strong>Module <code>AGENTS.md</code></strong> — scoped to one Module. May never contradict either spine.</li></ol>
+<p>A Module that introduces a pattern not listed here is a defect — in the Module, or in this document. Fix one of the two; do not leave both standing.</p>
+<p><strong>Vocabulary is fixed by PRD §4.</strong> <em>Reference Repo</em>, <em>Reference Extension</em>, <em>Module</em>, <em>Core Module</em>, <em>Feature Module</em>, <em>Tier</em>, <em>Annotation Block</em>, <em>Annotation Tag</em>, <em>Manifest Fragment</em>, <em>Consuming Agent</em>, <em>Consuming Developer</em>, <em>Leaf Content Script</em>, <em>Surface</em>, <em>Pitfall</em>, <em>Acceptance Check</em>. Introducing a synonym anywhere in this repository is a discipline violation.</p>
+<p><strong>Language is English, everywhere, without exception (NFR-9).</strong> Code comments, Annotation Blocks, agent instructions, user-facing strings, commit messages. A non-English string anywhere in the repository is a defect.</p>
+<p><strong>References like FR-12 or NFR-3 are provenance, not prerequisites.</strong> They point at the PRD for a maintainer tracing why a rule exists. Every rule in this document is also stated in full here, so a reader who has only this file can apply all of it without resolving a single citation.</p>
+<hr>
+<h1 id="part-a-—-repository-conventions">Part A — Repository Conventions</h1>
+<h2 id="annotation-tag-vocabulary">Annotation Tag Vocabulary</h2>
+<p>Every Module file carries an <strong>Annotation Block</strong> at its head. The block is the file's own reasoning, travelling inside the file so it cannot be separated from the code by a copy.</p>
+<h3 id="the-six-tags-and-only-these-six">The six tags, and only these six</h3>
+<table><thead><tr><th>Tag</th><th>Presence</th><th>Carries</th></tr></thead><tbody><tr><td><code>@tier</code></td><td><strong>Always</strong></td><td><code>required</code> or <code>optional</code></td></tr><tr><td><code>@chrome-min</code></td><td><strong>Always</strong></td><td>Bare major version, or <code>baseline</code></td></tr><tr><td><code>@permissions</code></td><td><strong>Always</strong></td><td>Manifest permission strings, or <code>none</code></td></tr><tr><td><code>@pitfall</code></td><td>When one applies</td><td>The silent failure this file guards against</td></tr><tr><td><code>@alternative</code></td><td>When one was rejected</td><td>The rejected option and why it lost</td></tr><tr><td><code>@scales-to</code></td><td>When a ceiling is known</td><td>When this approach breaks, and what replaces it</td></tr></tbody></table>
+<p>The vocabulary is <strong>closed</strong>. A seventh tag fails lint. There is no <code>@author</code>, no <code>@since</code>, no <code>@deps</code>, no <code>@quarantine</code>, no <code>@todo</code>. If a fact does not fit one of the six, it is not an annotation — it belongs in the code, in the module <code>AGENTS.md</code>, or nowhere.</p>
+<p>The first three are always present because <em>absence and zero are different claims</em>. A file with no permission cost writes <code>@permissions none</code>; a file with no version floor of its own writes <code>@chrome-min baseline</code>. An agent reading <code>@permissions none</code> learns something. An agent reading a missing line learns nothing and must guess.</p>
+<p>The last three are omitted when they do not apply, because writing <code>@pitfall none</code> asserts that no silent failure exists — a claim no one can verify.</p>
+<h3 id="canonical-form">Canonical form</h3>
+<pre><code class="language-js">// @ts-check
+/**
+ * @tier optional
+ * @chrome-min 105
+ * @permissions none
+ * @pitfall Unfiltered TreeWalker matches text inside &lt;script&gt; and &lt;style&gt;.
+ * @alternative &lt;mark&gt; wrapping -- mutates the DOM and forces layout recalculation.
+ * @scales-to Ranges beyond a few thousand matches stall the walk -&gt; chunk with requestIdleCallback.
+ */</code></pre>
+<p>That is a Leaf Content Script: it costs nothing, because it is <em>injected</em>. The file that performs the injection is where the cost lands:</p>
+<pre><code class="language-js">// @ts-check
+/**
+ * @tier required
+ * @chrome-min baseline
+ * @permissions activeTab, scripting
+ * @pitfall An injected function is serialized and cannot close over outer scope.
+ */</code></pre>
+<p>Rules, all of them lint-checkable:</p>
+<ul><li><strong><code>// @ts-check</code> is line 1.</strong> The Annotation Block starts on line 2. Nothing precedes either.</li><li><strong>One block per file, at the head.</strong> Lint reads only the first comment block; ordinary JSDoc (<code>@param</code>, <code>@returns</code>, <code>@type</code>) lives on functions, never inside the Annotation Block.</li><li><strong>Tag order is fixed</strong> in the order of the table above. Fixed order makes the block a single regex sweep and keeps diffs stable.</li><li><strong>One line per tag.</strong> A file needing two <code>@pitfall</code> lines is a file doing two things — split it (see <em>Overflow</em>, below).</li><li><strong>Six content lines maximum</strong>, excluding the <code>/**</code> and <code>*/</code> delimiters. This is the cap FR-2 sets, and SM-C3 says a longer block is a failure signal, not thoroughness.</li><li><strong>100 characters maximum per line</strong>, counting the raw source line including its <code> * </code> prefix. A tag that wraps in a narrow diff has stopped being greppable.</li><li><strong>ASCII only.</strong> This is the cheapest enforcement of NFR-9 and it keeps <code>-&gt;</code> and <code>--</code> unambiguous.</li></ul>
+<h3 id="pertag-grammar">Per-tag grammar</h3>
+<p><strong><code>@tier</code></strong> — exactly <code>required</code> or <code>optional</code>. Nothing else. No qualifiers, no parentheses.</p>
+<pre><code>@tier required</code></pre>
+<p><strong><code>@chrome-min</code></strong> — a bare major version integer, or the literal <code>baseline</code>. Not a range, not <code>114+</code>, not a full version string.</p>
+<p><strong>A numeric value is absolute.</strong> It states the Chrome version this file's own APIs require, independently of whatever floor this repository happens to declare. A Consuming Agent reading <code>@chrome-min 105</code> in a copied file learns the file's requirement and can compare it against <em>their</em> target — which is the entire point of the tag, and is destroyed the moment the number is expressed relative to this repo.</p>
+<p>**<code>baseline</code> means <em>this file adds no floor of its own beyond Manifest V3</em>.<strong> It does not resolve to the root <code>minimum_chrome_version</code>; it contributes nothing at all. In the L12 arithmetic below it is the identity element of <code>max()</code>, and a Module whose files are all <code>baseline</code> declares </strong>no** <code>minimum_chrome_version</code> in its Manifest Fragment — it simply inherits the host extension's.</p>
+<p>This repository's own root floor is <strong>116</strong>, fixed in <em>Fixed Numbers</em>. That number is the <em>result</em> of applying this rule across the Tier Required set, never a definition of <code>baseline</code>. Chrome 151 appears elsewhere in the planning artifacts as the version the research was conducted against — that is an anchor for the findings, never a floor for the code.</p>
+<pre><code>@chrome-min 138
+@chrome-min baseline</code></pre>
+<p><strong><code>@permissions</code></strong> — comma-separated, written <strong>exactly as the strings appear in <code>manifest.json</code></strong>. <code>none</code> when the file adds no permission. Host permissions are written as match patterns. A permission requested at runtime rather than declared up front carries the suffix <code>(optional)</code>.</p>
+<pre><code>@permissions activeTab, scripting
+@permissions none
+@permissions https://api.example.com/* (optional)</code></pre>
+<p><strong>Who carries the cost.</strong> A permission is declared by the file that <em>calls the API</em>, not by the file the API acts on. A Leaf Content Script that only walks the DOM writes <code>@permissions none</code>, because it was injected — the injection cost belongs to whichever file calls <code>chrome.scripting.executeScript()</code>, normally <code>core/tabs.js</code>. This is what keeps a leaf honestly free and stops the same permission being counted four times across one Module.</p>
+<p><strong>The Module-level check.</strong> Annotation Blocks are per file; a Manifest Fragment is per Module. So the rule FR-4 imposes is a <em>union</em>: the set of permissions across all of a Module's Annotation Blocks must equal the permission keys in that Module's declared Manifest Fragment. Lint rule L12 compares the union, not any single file. This is the one duplication this repository permits, and it is permitted only because a machine checks it.</p>
+<p><strong><code>@pitfall</code></strong> — one sentence naming a failure that produces a <em>wrong result without raising an error</em>. Present tense, states the mechanism, not the fix — the fix is the code directly below. Whether every known silent failure has been annotated is a <strong>review obligation on the maintainer</strong>, not a lint rule: no regex can know what a file forgot to warn about.</p>
+<pre><code>@pitfall Async onMessage without `return true` closes the port and the response is lost.</code></pre>
+<p><strong><code>@alternative</code></strong> — <code>&lt;rejected option&gt; -- &lt;why it lost&gt;</code>. The <code> -- </code> separator is mandatory and lint asserts both sides are non-empty. A rejected option with no stated reason is a preference, not a decision, and teaches the reader nothing.</p>
+<pre><code>@alternative Declarative content_scripts -- forces broad host_permissions this repo avoids.</code></pre>
+<p><strong><code>@scales-to</code></strong> — <code>&lt;when this approach stops being correct&gt; -&gt; &lt;what replaces it&gt;</code>. <strong>Both halves are mandatory.</strong> The <code> -&gt; </code> separator is the lint anchor; a <code>@scales-to</code> with only a condition or only a replacement fails review, per FR-2.</p>
+<p>This tag exists because of a specific decision recorded in addendum §A.3: <em>not using a pattern is not a reason to hide it</em>. The repository's output is a decision record, not only sample code. A Consuming Agent that copies <code>core/messaging.js</code> must carry away both how to send a message and where this approach runs out.</p>
+<pre><code>@scales-to Action names outgrow roughly a dozen -&gt; a typed event bus with a registry.
+@scales-to Stored payload passes ~5 MB or needs key-range queries -&gt; IndexedDB.</code></pre>
+<p>Write the condition as something a reader can <em>observe about their own project</em>, not as a vague magnitude. "Message types exceed a handful" is checkable. "Gets complicated" is not.</p>
+<h3 id="carrier-syntax-per-file-type">Carrier syntax per file type</h3>
+<table><thead><tr><th>File type</th><th>Carrier</th></tr></thead><tbody><tr><td><code>.js</code></td><td><code>/** … */</code> JSDoc block, one <code> * </code> per line</td></tr><tr><td><code>.css</code></td><td><code>/* … */</code>, one <code> * </code> per line</td></tr><tr><td><code>.html</code></td><td><code>&lt;!-- … --&gt;</code>, one tag per line, immediately inside <code>&lt;head&gt;</code></td></tr><tr><td><code>.json</code></td><td><strong>Exempt</strong> — JSON has no comments. The block lives on the <code>.js</code> file that consumes it; where no <code>.js</code> file consumes it, on the Module's <code>AGENTS.md</code></td></tr></tbody></table>
+<p>A JSON asset cannot warn anyone, so its annotation is carried by whichever file reads it — and that is normally a <code>.js</code> file in the same Module, which is also where its pitfall belongs.</p>
+<p><strong>Where no <code>.js</code> file reads it, the asset's pitfall moves to its Module's <code>AGENTS.md</code> under <code>## Notes</code>, written as prose.</strong> Not as a tag literal: L13 forbids an Annotation Tag literal in any <code>AGENTS.md</code>, and this exception does not reopen it. The repository has exactly one such asset — <code>policy/managed_schema.json</code>, whose reader is Chrome itself rather than any extension file, and whose failure mode (an invalid schema stops Chrome loading the entire extension) has nowhere else to live. A JSON asset with no consuming file and no <code>## Notes</code> entry is a defect.</p>
+<p><code>AGENTS.md</code>, <code>README.md</code>, and <code>LICENSE</code> are not Module files and carry no block.</p>
+<h3 id="overflow">Overflow</h3>
+<p>FR-2 sends content that needs more space to the Module's <code>AGENTS.md</code>. That escape hatch is real but narrow, and it is the <em>last</em> option:</p>
+<ol><li><strong>First, split the file.</strong> Two pitfalls almost always means two operations. <code>features/find-text/</code> is the worked example: the unfiltered-walker trap, the no-element-to-scroll-to trap, and the split-by-inline-markup limitation belong to three different files, each carrying one <code>@pitfall</code>. This is FR-7 and NFR-8 doing their job, not a workaround for the six-line cap.</li><li><strong>Only if the file genuinely performs one operation with two traps</strong>, keep the more silent one on the tag and continue in <code>AGENTS.md</code> under a <code>## Notes</code> heading, with the tag line ending in <code>More: AGENTS.md</code>.</li></ol>
+<p>Overflow is continuation. It is never restatement — see the next section.</p>
+<h3 id="lint-rules-v5">Lint rules (V-5)</h3>
+<p>Two steps, neither of which parses JavaScript:</p>
+<ol><li><strong>Extract the head block.</strong> Take the file's first comment block — from the first <code>/**</code>, <code>/*</code>, or <code>&lt;!--</code> to its closing delimiter — and nothing else. Everything below it is code, and ordinary JSDoc (<code>@param</code>, <code>@returns</code>, <code>@type</code>) lives there legitimately. A lint that scans whole files will flag valid JSDoc as a seventh tag; this one does not, because it never looks.</li><li><strong>Match each line of that block</strong> against one regex:</li></ol>
+<pre><code>/^\s*(?:\*|&lt;!--)\s*@([a-z-]+)\s+(.+?)\s*(?:--&gt;)?$/</code></pre>
+<p>L1, L8, L12, and L13 additionally need a directory walk, a line count, a JSON read, and a substring scan. Those are file operations, not language parsing — no AST is built anywhere, which is the property FR-2 asks for.</p>
+<h3 id="the-file-set-the-walk-covers">The file set the walk covers</h3>
+<p>L1 says "every Module file". A directory walk cannot apply that without being told which files those are, and L12's per-Module union needs to know which Module each file belongs to. Three classes, and every file in the repository is in exactly one:</p>
+<table><thead><tr><th>Class</th><th>Files</th><th>Block</th><th>L12</th></tr></thead><tbody><tr><td><strong>Module files</strong></td><td>everything under <code>core/</code>, <code>features/&lt;name&gt;/</code>, <code>ui/sidepanel/</code>, <code>ui/options/</code>, <code>ui/popup/</code>, <code>policy/</code></td><td>required (<code>.json</code> exempt per <em>Carrier syntax</em>)</td><td>grouped by Module against that Module's fragment</td></tr><tr><td><strong>Root composition files</strong></td><td><code>sw.js</code>, <code>ui/tokens.css</code></td><td>required</td><td><strong>exempt</strong> — they belong to no Module and declare no fragment; the manifest keys they need are base keys (below)</td></tr><tr><td><strong>Not walked</strong></td><td><code>tools/</code>, <code>e2e/</code>, <code>node_modules/</code>, <code>AGENTS.md</code>, <code>README.md</code>, <code>LICENSE</code>, <code>DESIGN.html</code>, <code>EXPERIENCE.md</code></td><td>none</td><td>—</td></tr></tbody></table>
+<p><code>AGENTS.md</code> is not walked for L1 but <em>is</em> scanned for L13. <code>tools/</code> and <code>e2e/</code> are not extension code (AD-3) and carry no annotation obligation.</p>
+<p><strong>The base manifest keys</strong> belong to the repository rather than to any Module, so no fragment declares them and L12 never sees them: <code>manifest_version</code>, <code>name</code>, <code>version</code>, <code>description</code>, <code>icons</code>, <code>background.service_worker</code>, <code>background.type</code>, and <code>action.default_popup</code>. Every other key in the root <code>manifest.json</code> is contributed by some Module's fragment, which is what makes the Acceptance Check's merge assertion (AD-17) checkable.</p>
+<p><code>background.type</code> is a sibling of <code>background.service_worker</code> and is listed for the same reason: <code>sw.js</code> uses <code>import</code>, MV3 service workers are classic workers by default, and without <code>"type": "module"</code> the worker does not start. It is the repository's key, not any Module's, and a Module has no way to ask for it.</p>
+<table><thead><tr><th>#</th><th>Rule</th></tr></thead><tbody><tr><td>L1</td><td>Every Module file that can carry comments has a head Annotation Block</td></tr><tr><td>L2</td><td><code>@tier</code> present; value in <code>{required, optional}</code></td></tr><tr><td>L3</td><td><code>@chrome-min</code> present; a bare integer or <code>baseline</code></td></tr><tr><td>L4</td><td><code>@permissions</code> present; <code>none</code> or a comma-separated list</td></tr><tr><td>L5</td><td>Closed vocabulary — any <code>@tag</code> outside the six fails</td></tr><tr><td>L6</td><td>No tag appears twice in one block</td></tr><tr><td>L7</td><td>Tags appear in the fixed order</td></tr><tr><td>L8</td><td>At most 6 content lines; at most 100 characters per raw source line</td></tr><tr><td>L9</td><td><code>@scales-to</code> contains <code> -&gt; </code> with non-empty text on both sides</td></tr><tr><td>L10</td><td><code>@alternative</code> contains <code> -- </code> with non-empty text on both sides</td></tr><tr><td>L11</td><td>Block is ASCII only</td></tr><tr><td>L12</td><td>The <strong>union</strong> of <code>@permissions</code> across a Module's files equals its Manifest Fragment permission keys, and the <strong>maximum</strong> <code>@chrome-min</code> across those files equals the fragment's <code>minimum_chrome_version</code>. The maximum is computed over the <strong>numeric tags only</strong> — <code>baseline</code> contributes nothing. A Module with no numeric tag declares no <code>minimum_chrome_version</code>, and a fragment declaring one that no file demands fails (FR-4)</td></tr><tr><td>L13</td><td>No Annotation Tag literal appears in any <code>AGENTS.md</code> (see next section)</td></tr></tbody></table>
+<h2 id="annotation-block-and-module-agentsmd">Annotation Block and Module <code>AGENTS.md</code></h2>
+<p><em>This section resolves PRD §14 item 6, which names DESIGN.html as its owner.</em></p>
+<p><strong>The question.</strong> FR-2 treats a module <code>AGENTS.md</code> as the overflow target for an Annotation Block. FR-31 additionally requires it to carry the complete copy procedure — which Core Modules to take, which manifest keys to merge, the verbatim shell line to add. Does the copy procedure duplicate what the block already states, or supersede it?</p>
+<p><strong>The resolution: neither. One fact, one owner — with exactly one machine-checked exception.</strong></p>
+<table><thead><tr><th>Fact</th><th>Owner</th><th>The other file</th></tr></thead><tbody><tr><td>Tier</td><td><code>@tier</code></td><td>Not restated</td></tr><tr><td>Chrome version floor</td><td><code>@chrome-min</code></td><td>Appears <strong>only</strong> as <code>minimum_chrome_version</code> inside the Manifest Fragment, where it must equal the maximum across the Module's numeric tags — and is absent when the Module has none; L12 verifies both directions</td></tr><tr><td>Permission cost</td><td><code>@permissions</code></td><td>Appears <strong>only</strong> as JSON keys inside the Manifest Fragment, which FR-4 requires to match the union of the Module's tags; L12 verifies it</td></tr><tr><td>Silent failure modes</td><td><code>@pitfall</code></td><td>Not restated; may be <em>continued</em> under <code>## Notes</code></td></tr><tr><td>Rejected options</td><td><code>@alternative</code></td><td>Not restated</td></tr><tr><td>Scaling ceiling</td><td><code>@scales-to</code></td><td>Not restated</td></tr><tr><td>Which Core Modules to copy</td><td><code>AGENTS.md</code> step 2</td><td>Not in the block</td></tr><tr><td>Which manifest keys to merge</td><td><code>AGENTS.md</code> step 3</td><td>Not in the block</td></tr><tr><td>The verbatim shell line to add</td><td><code>AGENTS.md</code> step 4</td><td>Not in the block</td></tr><tr><td>The command that verifies the copy</td><td><code>AGENTS.md</code> step 5</td><td>Not in the block</td></tr></tbody></table>
+<p><strong>The rule, stated so lint can check it (L13): no Annotation Tag literal — <code>@tier</code>, <code>@chrome-min</code>, <code>@permissions</code>, <code>@pitfall</code>, <code>@alternative</code>, <code>@scales-to</code> — may appear in any <code>AGENTS.md</code>.</strong></p>
+<p><strong>Why this way.</strong> The two files answer different questions. The block answers <em>should I take this, and what will it cost me</em> — judgement, read before deciding, and it must travel inside the source file because a copy that loses its caveats ships the pitfalls (research §Risk Assessment). <code>AGENTS.md</code> answers <em>how do I take it</em> — procedure, read after deciding, executable rather than descriptive (addendum §D: an agent can execute a command but cannot act on "make sure things work").</p>
+<p>Restating judgement in the procedure creates two sources for one fact, and the copy will drift from the original the first time either is edited. SM-C3 names longer agent instructions as a failure signal, not thoroughness. The permitted duplication is confined to the Manifest Fragment — permissions and version floor, in JSON, in the form a merger actually consumes — and it survives only because FR-4 mandates it and L12, not discipline, keeps the two in step.</p>
+<p><strong>The cost, stated honestly.</strong> A Consuming Developer who reads only <code>AGENTS.md</code> and never opens a source file will not see the permission cost as a sentence — they will see it as JSON in step 3, which is the form they actually need to merge. They will not see the pitfalls at all. That is acceptable because the pitfalls describe the code they are about to copy, and they will be looking at that code.</p>
+<h3 id="required-agentsmd-skeleton">Required <code>AGENTS.md</code> skeleton</h3>
+<p>Every Feature Module directory contains one. It carries four headings, in this order — <code>## What it does</code>, <code>## Depends on</code>, <code>## Copy procedure</code>, and nothing else. A fifth heading, <code>## Notes</code>, is added only when an Annotation Block genuinely overflowed; a Module with no overflow has no <code>## Notes</code>.</p>
+<p>Three rules the skeleton depends on:</p>
+<ul><li><strong><code>## Depends on</code> lists the transitive closure.</strong> If <code>core/tabs.js</code> imports <code>core/messaging.js</code>, both are named. A Consuming Agent executing step 2 must never have to follow a chain to find a third file.</li><li><strong><code>## Depends on</code> names Core Modules and nothing else.</strong> An asset the Module <em>degrades without</em> rather than <em>breaks without</em> is never named there; it is an optional clause inside step 2. The repository has exactly one — <code>ui/tokens.css</code>, which a <code>view.css</code> reaches through <code>var(--token, &lt;fallback&gt;)</code> and therefore survives the absence of. The distinction is load-bearing rather than tidy: the Acceptance Check copies exactly what <code>## Depends on</code> names, so anything named there is present in the assembled extension and can never be shown to be survivable. Naming an optional asset would convert the harness from a test of the stranger's case into a reproduction of this repository.</li><li><strong>The shell contract is fixed</strong>, so step 4 can be written without inventing anything: every Feature Module exposes <code>view.js</code> with one named export, <code>mount&lt;PascalCaseModuleName&gt;(container)</code>. The shell's edit is therefore always the same two lines — an <code>import</code> at the top and one call inside <code>mountViews()</code>.</li></ul>
+<pre><code class="language-markdown"># find-text
+
+## What it does
+Searches the active page for a string and highlights matches without mutating the DOM.
+
+## Depends on
+core/messaging.js, core/tabs.js
+
+## Copy procedure
+1. Copy this directory to `features/find-text/` in the target extension.
+2. Copy the Core Modules named under "Depends on" to `core/`.
+   Optionally also copy `ui/tokens.css` to `ui/` and link it from your shell. Without it
+   this view renders at the `var()` fallback values in its own `view.css`, which are this
+   repository's light-mode defaults — correct, but not theme-aware.
+3. Merge this Manifest Fragment (array keys union and de-duplicate;
+   `minimum_chrome_version` resolves to the maximum; any other scalar collision is an error):
+
+   ```json
+   { "permissions": ["activeTab", "scripting"], "minimum_chrome_version": "105" }
+   ```
+
+4. Add this line verbatim to `ui/sidepanel/shell.js`:
+
+   ```js
+   import { mountFindText } from '../../features/find-text/view.js';
+   ```
+
+   and this line verbatim inside `mountViews()`:
+
+   ```js
+   mountFindText(document.querySelector('#views'));
+   ```
+
+5. Verify: `npm run check:module -- find-text`</code></pre>
+<p>Step 4 is the honest cost of NFR-3. There is no registry, no auto-discovery, no convention-based loading, so adding a Module means editing the shell by hand — and both lines are stated verbatim here so an agent applies them without inference and removes them by deleting the same text. It fails loudly and greps cleanly.</p>
+<p><strong>It is two lines, not one.</strong> An earlier draft of FR-12 said "a single-line edit to the shell". Static ESM cannot bind an import and invoke it in one statement, and every one-line form that exists — a side-effecting import, a <code>VIEWS</code> array populated at load, a glob — is the auto-registration NFR-3 forbids. Two explicit lines is the smallest honest cost. <strong>FR-12 was corrected to "a two-line edit" on this document's authority; the requirement behind it is unchanged.</strong></p>
+<h2 id="pitfall-register">Pitfall Register</h2>
+<p><strong>NFR-4 requires every applicable pitfall below to appear as a <code>@pitfall</code> line in the relevant Module's Annotation Block.</strong> That obligation is stated here rather than in a planning artifact because a Consuming Agent receives this repository and nothing else — a conformance rule pinned to a document the audience never sees cannot be conformed to.</p>
+<p>These are the twenty-two known failure modes that <strong>produce a wrong result without raising an error</strong>. That is the entire admission criterion. A crash, a rejected promise, or a red console line is not a pitfall — it announces itself. Everything below returns something that looks fine.</p>
+<p>Two standing rules:</p>
+<ul><li><strong>The register is a floor, not a ceiling.</strong> A Module that discovers a new one annotates it and adds it here. Whether a file has annotated every silent failure it actually has is a <strong>review obligation on the maintainer</strong> — no regex can know what a file forgot to warn about.</li><li><strong>A pitfall states the mechanism, not the fix.</strong> The fix is the code directly below the block.</li></ul>
+<h3 id="service-worker-and-messaging">Service worker and messaging</h3>
+<table><thead><tr><th>Pitfall</th><th>Consequence</th></tr></thead><tbody><tr><td>Async message handler without the continuation signal</td><td>Port closes immediately; the response is lost</td></tr><tr><td>Assuming the service worker persists</td><td>Terminated after ~30 s idle; in-memory state vanishes</td></tr><tr><td>Keepalive ping loops</td><td>Battery drain and Web Store rejection risk</td></tr><tr><td>Tracing the log action itself</td><td>The tracer logs, which sends the log action again; the channel and the buffer flood</td></tr><tr><td>Two Surfaces appending to one stored collection</td><td>Each rewrites the whole value and drops the other's entry; both writes report success</td></tr></tbody></table>
+<h3 id="storage-configuration-and-secrets">Storage, configuration, and secrets</h3>
+<table><thead><tr><th>Pitfall</th><th>Consequence</th></tr></thead><tbody><tr><td>Session storage read from a content script</td><td>Not exposed without an explicit access-level call</td></tr><tr><td>Secrets written unencrypted</td><td>Plaintext on disk, readable without running your code</td></tr><tr><td>Storing a value <code>JSON</code> cannot carry</td><td><code>chrome.storage</code> reshapes it instead of refusing it — a <code>Date</code> and a <code>Set</code> become <code>{}</code>, a circular reference becomes <code>null</code>, an <code>undefined</code> property disappears; the write resolves</td></tr><tr><td>API key in a configuration field</td><td>Synced storage reaches Google's servers, not end-to-end encrypted</td></tr><tr><td>Options interface saving per keystroke</td><td>Exceeds the synced write-rate limit; the write fails, not the UI</td></tr><tr><td>Reading configuration before migration completes</td><td>Update handler races other Surfaces</td></tr></tbody></table>
+<h3 id="dom-operations-in-a-leaf">DOM operations in a leaf</h3>
+<table><thead><tr><th>Pitfall</th><th>Consequence</th></tr></thead><tbody><tr><td>Unfiltered tree walker</td><td>Matches text inside non-rendered elements</td></tr><tr><td>Scrolling to a range-based highlight</td><td>No element exists to scroll to</td></tr><tr><td>Naive per-text-node search</td><td>Misses matches split by inline markup</td></tr><tr><td>Plain value assignment on a framework-controlled input</td><td>Silently ignored or reverted on next render</td></tr><tr><td>Reusing the input value setter for a textarea</td><td>Different prototype</td></tr></tbody></table>
+<h3 id="rendering-a-view">Rendering a view</h3>
+<table><thead><tr><th>Pitfall</th><th>Consequence</th></tr></thead><tbody><tr><td>A full keyed re-render of a list</td><td>Every row is replaced, so focus and selection inside the list are lost</td></tr><tr><td>Setting a live control's value with <code>setAttribute</code></td><td>Sets the <em>default</em> value; once the user has typed, the element ignores the attribute — the same for a checkbox's <code>checked</code> and an option's <code>selected</code></td></tr></tbody></table>
+<h3 id="privilege-boundaries-and-policy">Privilege boundaries and policy</h3>
+<table><thead><tr><th>Pitfall</th><th>Consequence</th></tr></thead><tbody><tr><td>Content script fetching cross-origin</td><td>Inherits the page's origin and is blocked</td></tr><tr><td>Relaying arbitrary URLs to the service worker</td><td>Turns the extension into an open proxy</td></tr><tr><td>Malformed enterprise policy schema</td><td>Chrome refuses to load the entire extension</td></tr></tbody></table>
+<h3 id="failure-reporting">Failure reporting</h3>
+<table><thead><tr><th>Pitfall</th><th>Consequence</th></tr></thead><tbody><tr><td>An error code outside the closed set reaching a banner</td><td>Renders as a label nobody defined</td></tr></tbody></table>
+<p><em>Provenance: PRD <code>addendum.md</code> §C contributed the original sixteen. The addendum remains the reasoning record for those, and the two must not diverge. Entries beyond the sixteen were discovered by the Modules that guard them under the floor-not-ceiling rule above, and originate here rather than in the addendum: the log-tracing recursion in <code>core/messaging.js</code>, the unrecognised error code in <code>core/errors.js</code>, the silent reshaping of an unserialisable value in <code>core/storage.js</code>, the two-writer collection rewrite in <code>core/logger.js</code>, and the two rendering entries from <code>core/render.js</code>. Several were found by measuring Chrome rather than by reading it, and each shipped as a <code>@pitfall</code> one story before it could be recorded here.</em></p>
+<p><em>The rendering pair is the first entry where the register carries <strong>more than the file's block can</strong>. An Annotation Block permits one <code>@pitfall</code> line, and <code>core/render.js</code> has two applicable failures: the re-render one is on its tag, because it is the mechanism its <code>@scales-to</code> ceiling is measured from; the <code>setAttribute</code> one travels in that file's JSDoc prose until <code>core/AGENTS.md</code> exists to hold the overflow. Both are normative here regardless of where the file carries them.</em></p>
+<h2 id="tier-criteria">Tier Criteria</h2>
+<p><code>@tier</code> is <code>required</code> or <code>optional</code>. The classification is <strong>enforced, not asserted</strong>: FR-3 makes it true by deletion, and the Acceptance Check proves it.</p>
+<p><strong>The default is <code>optional</code>. <code>required</code> must be argued.</strong> Every Required Module is code that every downstream consumer copies whether they want it or not, and SM-C2 names Core growth as a cost paid by everyone.</p>
+<p>**Scope: these criteria classify a Module inside <em>this</em> repository.** They are not a decision procedure for the extension a Consuming Agent is building. Test 1 asks about the Reference Extension specifically, and applying it to a single-capability extension would mark that extension's one feature <code>required</code> — which is true of that extension and useless as a tier. A copied Module keeps the <code>@tier</code> it was given here, because the tag records <em>what this repository guarantees about it</em>, not what the consumer's project happens to need.</p>
+<p>Apply in order; first match wins:</p>
+<table><thead><tr><th>#</th><th>Test</th><th>Verdict</th></tr></thead><tbody><tr><td>1</td><td>Delete this Module's directory <em>and</em> the manifest keys it declares. Does the Reference Extension still load and perform its Required capabilities?</td><td><strong>No → <code>required</code></strong></td></tr><tr><td>2</td><td>Does it have a runtime precondition that can be unmet on a supported machine — a Chrome floor above the base, an OS version, desktop-only, a feature detection, an enterprise policy, an external registration?</td><td><strong>Yes → <code>optional</code></strong></td></tr><tr><td>3</td><td>Is it depended on by two or more Modules?</td><td><strong>Yes → <code>required</code></strong>, and NFR-2 says it belongs in <code>core/</code></td></tr><tr><td>4</td><td>Does it add a permission beyond the base set (<code>activeTab</code>, <code>scripting</code>, <code>storage</code>, <code>sidePanel</code>)?</td><td><strong>Yes → <code>optional</code></strong></td></tr><tr><td>5</td><td>Otherwise</td><td><strong><code>optional</code></strong></td></tr></tbody></table>
+<p>Two standing consequences:</p>
+<ul><li><strong>Core Modules are always <code>required</code></strong> (PRD §4). A Core Module used by exactly one Feature Module is a placement defect, not a de-duplication success (SM-C2) — move it back into that Feature Module.</li><li><strong>Feature Modules never depend on each other</strong> (FR-1). If two need the same helper, the helper is promoted to <code>core/</code> and both declare the dependency. Promotion, never cross-import.</li></ul>
+<p><strong>Quarantine is not a tier.</strong> One unit in this repository has a failure mode that is repository-wide: an invalid <code>managed_schema</code> prevents Chrome from loading the entire extension. It is quarantined by <strong>placement</strong>, not by a seventh tag — the vocabulary stays closed.</p>
+<p>That unit is <strong><code>policy/managed_schema.json</code> plus the <code>"storage": { "managed_schema": … }</code> manifest key</strong>. There is no <code>core/config-managed.js</code>. <code>core/config.js</code> reads <code>chrome.storage.managed</code> itself, because three-tier resolution — <code>managed</code> → user area → declared default — is already its job under FR-17, and reading an unpopulated managed area is harmless. Deleting <code>policy/</code> and the manifest key removes the risk, changes no JavaScript, and touches neither FR-17 nor FR-18.</p>
+<p>This is what keeps <em>Core Modules are always <code>required</code></em> true without exception. A <code>@tier optional</code> file inside <code>core/</code> would contradict PRD §4 directly; a <code>core/</code> file reaching into a Feature Module for the schema would invert the dependency direction and make the kernel unliftable. Moving the quarantine out of JavaScript avoids both.</p>
+<h2 id="surface-responsibility-model">Surface Responsibility Model</h2>
+<p>Six execution contexts, each owning a bounded set of concerns. This table is normative. It refines PRD addendum §B.1 in one place, flagged below.</p>
+<table><thead><tr><th>Surface</th><th>Owns</th><th>Must not</th><th>State lives in</th></tr></thead><tbody><tr><td><strong>Side panel</strong> <em>(primary UI)</em></td><td>All user interaction; result lists; dialogs; on-device translation calls (needs a document); the platform-authenticator ceremony (the popup closes when the credential prompt appears)</td><td>Hold long-term state; perform cross-origin <code>fetch</code></td><td>Nothing durable — reads from <code>storage</code> on mount</td></tr><tr><td><strong>Service worker</strong></td><td>Privileged cross-origin <code>fetch</code>; orchestration; the developer log ring buffer; writes it originates</td><td>Call the Translator API (worker context); assume it survives ~30s idle; run a keepalive loop</td><td><code>storage.session</code> for anything that must outlive termination</td></tr><tr><td><strong>Content script</strong></td><td>Exactly one DOM operation per file; returns plain data</td><td><code>import</code>/<code>export</code>; cross-origin <code>fetch</code>; retain state between invocations; read <code>storage</code></td><td>Nothing — it is a Leaf Content Script</td></tr><tr><td><strong>Offscreen document</strong></td><td>DOM APIs the service worker lacks — the fallback path for translation</td><td>Anything but <code>chrome.runtime</code></td><td>Nothing</td></tr><tr><td><strong>Options surface</strong></td><td>Editing configuration; writing the config keys it owns</td><td>Host feature flows; hold runtime state</td><td><code>storage.sync</code> / <code>storage.local</code> per the schema's per-key area</td></tr><tr><td><strong>Popup</strong></td><td>A minimal launcher demonstration</td><td>Host any main flow; drive a WebAuthn ceremony</td><td>Nothing</td></tr></tbody></table>
+<h3 id="routing-rules">Routing rules</h3>
+<ul><li><strong>R1 — Privilege gradient.</strong> Content script (least) → side panel → service worker (most). Data flows <em>up</em> as <strong>parameters</strong>, never as URLs or executable strings. A content script that can hand a URL to a privileged fetcher has turned the extension into an open proxy.</li><li><strong>R2 — Document work routes to the panel first.</strong> When the service worker needs a DOM or document API, route it to the side panel. Reach for an offscreen document only when the panel cannot be guaranteed open. Offscreen is a fallback, not a default — it costs a Surface and can talk to nothing but <code>chrome.runtime</code>.</li><li><strong>R3 — Content scripts are leaves.</strong> One DOM operation, no imports, no state, plain data out, <code>ISOLATED</code> world. <strong>A leaf returns by returning</strong>: its value comes back to the caller as the <code>result</code> of the <code>chrome.scripting.executeScript()</code> promise. It does not <code>export</code>, does not <code>sendMessage</code>, and does not know who called it — which is what makes it copyable. A deviation to <code>MAIN</code> requires an <code>@alternative</code> line stating why, and costs a separate file plus a messaging hop back, because <code>MAIN</code> loses every <code>chrome.*</code> API and with it the return path.</li><li><strong>R4 — One messaging door.</strong> No file except <code>core/messaging.js</code> touches <code>chrome.runtime.onMessage</code>. Calling code names an action string. The <code>return true</code> continuation requirement is handled once, inside the module, and never in calling code.</li><li><strong>R5 — A Surface writes only the storage it owns.</strong> The options surface writes config keys. The service worker writes session state and anything written as a result of orchestration. The side panel writes nothing durable. Content scripts touch storage not at all.  <em>This refines addendum §B.1, which assigns "storage writes" wholesale to the service worker while FR-18 has the options surface writing configuration. Routing every options keystroke through the worker would add a hop and a failure mode for no gain; ownership by key is the honest rule. Propagation is <code>chrome.storage.onChanged</code> in every Surface — never polling.</em></li><li><strong>R6 — Injection is on demand, and it is issued where the gesture is.</strong> <code>chrome.scripting.executeScript()</code> under <code>activeTab</code>, at user invocation — normally straight from the side panel through <code>core/tabs.js</code>, because that is where the user clicked and <code>activeTab</code> is granted against that gesture. Routing the call through the service worker adds a hop and a place to hang without adding a capability. <em>"Orchestration" in the service worker's row means work that spans Surfaces or needs privileged <code>fetch</code>, not every injection.</em> Never declarative <code>content_scripts</code>, which would force the broad host permissions this architecture exists to avoid. An injected <em>function</em> is serialized and cannot close over outer scope, imports, or variables — only values passed via <code>args</code>.</li></ul>
+<h3 id="storage-placement">Storage placement</h3>
+<table><thead><tr><th>Area</th><th>Hard limits</th><th>Holds</th></tr></thead><tbody><tr><td><code>local</code></td><td>10 MB (5 MB on Chrome ≤ 113)</td><td>Settings, ciphertext, machine-local flags including the Developer Mode toggle</td></tr><tr><td><code>sync</code></td><td>~100 KB total, 8 KB per item, 120 writes/min, 1,800/hour</td><td>Synced user preferences only. <strong>Never a secret</strong> — <code>sync</code> reaches Google's servers and is not end-to-end encrypted</td></tr><tr><td><code>session</code></td><td>10 MB (1 MB on Chrome ≤ 111), in-memory, never written to disk, cleared on browser restart; <strong>not exposed to content scripts without an explicit <code>setAccessLevel()</code> call</strong></td><td>The unlocked encryption key, service-worker state, the developer log ring buffer</td></tr></tbody></table>
+<p><code>chrome.storage.local</code> is <strong>plaintext in the profile directory</strong>. Chrome's OSCrypt layer protects Chrome's own password database, not extension storage. This is not a hardening note — it is the reason <code>features/secret-box/</code> exists, and the reason an authentication gate that produces no key material protects nothing.</p>
+<h2 id="fixed-numbers">Fixed Numbers</h2>
+<p>Constants this document owns, so that no Module has to invent one.</p>
+<table><thead><tr><th>Constant</th><th>Value</th><th>Why this number</th></tr></thead><tbody><tr><td><strong>Base <code>minimum_chrome_version</code></strong> <em>(PRD §14 item 7)</em></td><td><strong>116</strong>, declared once in the root <code>manifest.json</code></td><td>The binding API across the Tier Required set is <code>chrome.sidePanel.open()</code>, added in Chrome 116. <code>chrome.sidePanel</code> itself lands at 114, but <code>open()</code> is the only route from a popup click to the panel — and with no popup declared, no gesture reaches FR-12's launcher demonstration at all, so the file exists and nobody can open it. Either branch lands on 116. The runner-up floor in the Required set is 102 (<code>storage.session</code> with <code>setAccessLevel</code>); nothing else in the set is above it. <strong>No Required Module may raise this number without re-auditing the whole set.</strong> It is not what <code>@chrome-min baseline</code> resolves to — see <em>Per-tag grammar</em>.</td></tr><tr><td><strong>Developer log ring buffer capacity</strong> <em>(FR-26)</em></td><td><strong>500 entries</strong>, oldest discarded first</td><td>Roughly 150 KB in <code>storage.session</code> at ~300 B per entry, comfortably inside the 10 MB area. Long enough to hold a full user action traced across three Surfaces, short enough to render as plain DOM without virtualisation, and cheap enough that rewriting the buffer on every entry stays unnoticeable. A larger buffer would eventually force virtualised rendering or incremental writes, and both are the invisible infrastructure NFR-3 forbids.</td></tr><tr><td>Annotation Block cap</td><td>6 content lines, 100 chars per line</td><td>FR-2 sets the line cap; the character cap keeps a tag greppable in a narrow diff</td></tr><tr><td>Side panel design floor</td><td>320 px</td><td>Every panel layout must hold at 320 px and must not break at 800 px. There are no breakpoints inside the panel — it is a resizable strip, not a page</td></tr><tr><td>Options surface content column</td><td>560 px max, centred</td><td>The options surface is embedded inside <code>chrome://extensions</code>; a wider column fights its host chrome</td></tr><tr><td><code>storage.sync</code> write debounce</td><td>750 ms</td><td>The <code>sync</code> cap is 120 writes/min — one per 500 ms. 750 ms holds a single field to 80/min, leaving headroom for a second field being edited in the same session</td></tr><tr><td>Minimum interactive target</td><td>28 px height</td><td>Meets WCAG 2.2 target-size minimum with margin, at the density a side panel needs</td></tr></tbody></table>
+<hr>
+<h1 id="part-b-—-visual-system">Part B — Visual System</h1>
+<h2 id="brand-style">Brand &amp; Style</h2>
+<p><strong>Neutral Instrument.</strong> This extension is a demonstration vehicle for code that will be copied out of it, and the visual system is designed around that fact before it is designed around taste.</p>
+<p>The consequence is restraint with a reason. A Module's stylesheet will end up inside somebody else's extension, next to their own design, and anything opinionated it carries becomes something they have to remove. So the palette is achromatic by default, one accent carries the single meaning <em>this is the live one</em>, three status colours carry outcome, and nothing else is coloured at all. Structure is communicated with borders and tonal surface steps rather than shadow, because a border is one declaration a stranger can delete and an elevation system is not.</p>
+<p>The tone is that of an instrument panel: dense, quiet, factual. Lists are the dominant form because every feature in this repository is "produce a list from the page, then click items to act on the page." Monospace appears wherever the thing on screen is machine-shaped — log entries, ciphertext, permission strings, storage keys, Chrome versions — and nowhere else, so that the switch in typeface always means <em>this is data, not prose</em>.</p>
+<p>No animation beyond a state change becoming visible. No decorative iconography. No empty flourish where a real affordance belongs. The extension should look like it was built by someone who was busy documenting something more important.</p>
+<h2 id="colors">Colors</h2>
+<p>Two ramps — neutral and semantic — defined as CSS custom properties on <code>:root</code>, redefined once under <code>@media (prefers-color-scheme: dark)</code>. There is no in-extension theme toggle: Chrome owns that preference and duplicating it would be a config key that exists to fight the browser. A downstream project that wants an explicit toggle overrides the same custom properties under an <code>html[data-theme]</code> selector, which is a change to their shell, not to any copied Module.</p>
+<h3 id="neutral-ramp">Neutral ramp</h3>
+<table><thead><tr><th>Token</th><th>Light</th><th>Dark</th><th>Carries</th></tr></thead><tbody><tr><td><code>{colors.surface}</code></td><td><code>#FFFFFF</code></td><td><code>#17191C</code></td><td>The panel and options body</td></tr><tr><td><code>{colors.surface-sunken}</code></td><td><code>#F5F6F7</code></td><td><code>#101215</code></td><td>Recessed regions: the log stream, code blocks, inspector tables</td></tr><tr><td><code>{colors.surface-raised}</code></td><td><code>#FFFFFF</code></td><td><code>#1E2126</code></td><td>Dialogs and popovers. Identical to <code>surface</code> in light, where separation comes from the border and shadow; a real step in dark, where shadow reads poorly</td></tr><tr><td><code>{colors.border}</code></td><td><code>#DCE0E5</code></td><td><code>#2C3037</code></td><td>Hairlines between rows and sections</td></tr><tr><td><code>{colors.border-strong}</code></td><td><code>#BFC6CD</code></td><td><code>#454C55</code></td><td>Control outlines: inputs, secondary buttons, checkboxes</td></tr><tr><td><code>{colors.text}</code></td><td><code>#1B1F24</code></td><td><code>#E7EAEE</code></td><td>Primary text</td></tr><tr><td><code>{colors.text-muted}</code></td><td><code>#5A636D</code></td><td><code>#A6AEB8</code></td><td>Secondary text, section labels, inactive rows</td></tr><tr><td><code>{colors.text-faint}</code></td><td><code>#697079</code></td><td><code>#8A929B</code></td><td>Timestamps, counts, placeholder text. <strong>The floor</strong> — nothing sits below this</td></tr></tbody></table>
+<h3 id="accent-—-one-colour-one-meaning">Accent — one colour, one meaning</h3>
+<p><code>{colors.accent}</code> <code>#1D4ED8</code> light / <code>#8FB2F7</code> dark means <strong>live</strong>: the selected list row, the focused control's ring, the primary button, the active module in the shell nav, the currently scrolled-to match.</p>
+<p>It never means "important", never decorates a heading, never fills a background for emphasis, and never appears more than once per visible region. If two things on screen are accented, one of them is wrong.</p>
+<p><code>{colors.accent-soft}</code> <code>#E8EEFC</code> / <code>#21304D</code> is its tint, used only as the background of a selected row. Text on it stays <code>{colors.text}</code>.</p>
+<h3 id="status-—-outcome-not-decoration">Status — outcome, not decoration</h3>
+<table><thead><tr><th>Token</th><th>Light</th><th>Dark</th><th>Means</th></tr></thead><tbody><tr><td><code>{colors.success}</code></td><td><code>#116B3C</code></td><td><code>#5FD08C</code></td><td>Capability available; operation completed; secret unlocked</td></tr><tr><td><code>{colors.warning}</code></td><td><code>#8A5300</code></td><td><code>#E2B04A</code></td><td>Capability unknown or degraded; a documented limitation is in effect</td></tr><tr><td><code>{colors.danger}</code></td><td><code>#B3261E</code></td><td><code>#F1867E</code></td><td>Capability unavailable; operation failed; a destructive control</td></tr></tbody></table>
+<p>Status colour appears as text and as a 2 px left border on a banner. Never as a filled background block — a filled red panel in a 320 px strip reads as a crash.</p>
+<p><strong>Colour is never the only carrier.</strong> Every status is also a word (<code>available</code> / <code>unknown</code> / <code>unavailable</code>), and every banner also has a leading label. This is the NFR-7 bar in visual form.</p>
+<h3 id="verified-contrast">Verified contrast</h3>
+<p>Measured, not assumed. Every text-bearing pair below is ≥ 4.5:1 against the surface it is specified on.</p>
+<p>Computed from the literals above by the WCAG 2.x relative-luminance formula and printed to one decimal, so each cell is checkable rather than asserted. Story 1.9's harness recomputes all eighteen from the colours a browser actually parses out of <code>ui/tokens.css</code> and reports any cell that does not match — which is how the dark <code>text-faint</code> on <code>surface-sunken</code> cell was found to have been computed against <code>surface-raised</code> (5.1) instead.</p>
+<table><thead><tr><th>Pair</th><th>Light</th><th>Dark</th></tr></thead><tbody><tr><td><code>text</code> on <code>surface</code></td><td>16.6:1</td><td>14.6:1</td></tr><tr><td><code>text-muted</code> on <code>surface</code></td><td>6.1:1</td><td>7.9:1</td></tr><tr><td><code>text-faint</code> on <code>surface</code></td><td>5.0:1</td><td>5.6:1</td></tr><tr><td><code>text-faint</code> on <code>surface-sunken</code></td><td>4.6:1</td><td>6.0:1</td></tr><tr><td><code>accent</code> on <code>surface</code></td><td>6.7:1</td><td>8.3:1</td></tr><tr><td><code>on-accent</code> on <code>accent</code> fill</td><td>6.7:1</td><td>8.7:1</td></tr><tr><td><code>success</code> on <code>surface</code></td><td>6.6:1</td><td>9.1:1</td></tr><tr><td><code>warning</code> on <code>surface</code></td><td>6.3:1</td><td>8.8:1</td></tr><tr><td><code>danger</code> on <code>surface</code></td><td>6.5:1</td><td>7.1:1</td></tr></tbody></table>
+<p><code>border</code> and <code>border-strong</code> are non-text and carry no contrast obligation; they are never the sole indicator of a control's state.</p>
+<h2 id="typography">Typography</h2>
+<p><strong>No web fonts.</strong> The repository ships no font file and makes no network request for one — that is a direct consequence of the buildless decision (FR-6) and of the zero-runtime-dependency policy (PS-5). Two system stacks:</p>
+<ul><li><code>{typography.family-ui.fontFamily}</code> — everything a person reads as prose or as a label.</li><li><code>{typography.family-mono.fontFamily}</code> — everything machine-shaped.</li></ul>
+<p><strong>The monospace switch is semantic.</strong> It is used for log entries, ciphertext, storage keys and values, permission strings, action names, Chrome version numbers, and Annotation Tag content shown in the UI. It is not used for emphasis, and prose is never set in it. A reader must be able to conclude from the typeface alone that what they are looking at came from the machine rather than from a writer.</p>
+<table><thead><tr><th>Role</th><th>Spec</th><th>Used for</th></tr></thead><tbody><tr><td><code>{typography.title}</code></td><td>15 / 600 / 1.35</td><td>Panel header, dialog title, options page title</td></tr><tr><td><code>{typography.section-label}</code></td><td>11 / 600 / 1.4 / +0.06em, uppercase</td><td>Section headers inside the panel and options surface</td></tr><tr><td><code>{typography.body}</code></td><td>13 / 400 / 1.5</td><td>Default. List rows, banner text, form labels, help text</td></tr><tr><td><code>{typography.body-strong}</code></td><td>13 / 600 / 1.5</td><td>The one emphasised word in a row; button labels</td></tr><tr><td><code>{typography.meta}</code></td><td>11 / 400 / 1.4</td><td>Counts, timestamps in prose contexts, tier and version badges</td></tr><tr><td><code>{typography.mono}</code></td><td>12 / 400 / 1.5</td><td>Code blocks, ciphertext, storage values</td></tr><tr><td><code>{typography.mono-sm}</code></td><td>11 / 400 / 1.45</td><td>Log stream rows, inspector tables</td></tr></tbody></table>
+<p>13 px body is the density a 320 px side panel needs and is what Chrome's own extension surfaces use. Sizes are px rather than rem because there is no root to inherit from that this repository controls; browser zoom applies normally and the layout is fluid, so a zoomed panel reflows rather than clipping.</p>
+<p>Ramp discipline: seven roles, and adding an eighth requires deleting one. There is no <code>h1</code>–<code>h6</code> cascade — the panel has one title and a flat run of section labels beneath it.</p>
+<h2 id="layout-spacing">Layout &amp; Spacing</h2>
+<p><strong>4 px unit.</strong> The named scale is <code>{spacing.1}</code> 4, <code>{spacing.2}</code> 8, <code>{spacing.3}</code> 12, <code>{spacing.4}</code> 16, <code>{spacing.5}</code> 20, <code>{spacing.6}</code> 24, <code>{spacing.8}</code> 32. Padding, gaps, and margins use a named step. Component <em>dimensions</em> — a 28 px control, a 40 px header, a 20 px badge — need not be named tokens, but <strong>every dimension in the system is a multiple of <code>{spacing.unit}</code>, with exactly one exception: <code>{spacing.row-y}</code> is 6 px</strong>, which is what puts a list row on the 28 px interactive minimum (see <em>Density</em>, below). A value outside that exception that is not a multiple of 4 is a defect.</p>
+<p><strong>The rule is about dimensions, and radii and type sizes are neither.</strong> <code>{rounded.sm}</code> 3, <code>{rounded.md}</code> 6 and <code>{rounded.full}</code> 9999 are shape; 15/13/12/11 px are positions on a type ramp. A checker that applies the 4 px rule to them fails against a correct system — story 1.9's harness scopes it to the <code>--space-*</code> scale and pins <code>row-y</code> as the sole named constant off the grid, so a second exception cannot appear quietly.</p>
+<p><strong>The side panel is a strip, not a page.</strong> One column, full width, <code>{spacing.panel-gutter}</code> 12 px on each side. It has a <strong>design floor of 320 px</strong> and must remain usable when the user drags it to 800 px — but there are <strong>no breakpoints</strong>. A layout that needs a breakpoint inside the panel is a layout that wanted to be a page. Content grows by reflowing text and by letting lists take the extra height, never by switching to columns.</p>
+<p>Vertical rhythm inside the panel:</p>
+<pre><code>┌────────────────────────────────────┐
+│ header      title + settings link  │  40px, sticky, 1px bottom border
+├────────────────────────────────────┤
+│ module nav  horizontal, scrollable │  32px, only when &gt;1 view is mounted
+├────────────────────────────────────┤
+│                                    │
+│ view region                        │  flex:1, scrolls
+│   section-label                    │  spacing.4 above, spacing.2 below
+│   controls                         │  spacing.2 between
+│   list                             │  rows at spacing.row-y (6px) vertical
+│                                    │
+├────────────────────────────────────┤
+│ status line   result count / state │  24px, only when a view has a count
+└────────────────────────────────────┘</code></pre>
+<p><strong>The options surface is a page.</strong> It is embedded inside <code>chrome://extensions</code> (<code>options_ui.page</code> with <code>open_in_tab: false</code>), so it inherits its host's chrome and must not fight it: a single centred column at <code>{spacing.options-column}</code> 560 px maximum, <code>{spacing.options-gutter}</code> 24 px gutters, fields stacked one per row, grouped under section labels. The form is rendered from <strong><code>core/config.schema.js</code></strong> — the single declaration of every configuration key's type, default, storage area, and label — and not hand-authored. No per-key markup exists, so no per-key layout can either.</p>
+<p><strong>Dialogs render inside the panel</strong>, not as a browser-level window. Their width is the panel width minus <code>{spacing.4}</code> on each side, so at 320 px a dialog is 288 px wide. This is why dialog content is one column of stacked fields and at most two actions.</p>
+<p><strong>Density is a rule, not a taste.</strong> A list row is <code>{spacing.row-y}</code> 6 px of vertical padding around 13 px text — roughly 28 px tall, which is also the minimum interactive target. Twelve rows fit in a typical panel height without scrolling, which is the point: the whole result set should be apprehensible at a glance.</p>
+<h2 id="elevation-depth">Elevation &amp; Depth</h2>
+<p><strong>Depth is structural, not atmospheric.</strong> There is exactly one shadow in this system:</p>
+<pre><code class="language-css">--shadow-dialog: 0 8px 24px rgba(0, 0, 0, 0.18);</code></pre>
+<p>It exists only on the dialog, and only because a dialog must be readable as floating above the list it covers. Everything else separates with a 1 px <code>{colors.border}</code> hairline and a tonal step to <code>{colors.surface-sunken}</code>.</p>
+<p>The reason is portability. A copied Module's CSS should carry at most one shadow declaration into a stranger's project, and ideally none. A three-level elevation scale is an aesthetic commitment the consumer did not ask for.</p>
+<p>In dark mode the shadow does almost nothing — dark surfaces absorb it. <code>{colors.surface-raised}</code> <code>#1E2126</code> is a real tonal step above <code>{colors.surface}</code> <code>#17191C</code> for that reason, and the dialog border does the rest of the work.</p>
+<p>The scrim behind a dialog is <code>rgba(0, 0, 0, 0.32)</code> in light and <code>rgba(0, 0, 0, 0.56)</code> in dark. It covers the view region and the status line, and it does <strong>not</strong> cover the panel header — the settings link stays reachable, because a dialog that traps the user in a 288 px box with no visible exit is the panel equivalent of a modal with no close button.</p>
+<h2 id="shapes">Shapes</h2>
+<table><thead><tr><th>Token</th><th>Value</th><th>Applied to</th></tr></thead><tbody><tr><td><code>{rounded.sm}</code></td><td>3 px</td><td>List row selection background, badges with square content</td></tr><tr><td><code>{rounded.DEFAULT}</code></td><td>4 px</td><td>Buttons, inputs, banners, code blocks</td></tr><tr><td><code>{rounded.md}</code></td><td>6 px</td><td>Grouped cards in the options surface</td></tr><tr><td><code>{rounded.lg}</code></td><td>8 px</td><td>Dialogs</td></tr><tr><td><code>{rounded.full}</code></td><td>9999 px</td><td>Tier and status badges only</td></tr></tbody></table>
+<p>Corners are tight on purpose. At 13 px text in a 320 px strip, a generous radius eats the little horizontal space there is and reads as a consumer app rather than an instrument. The one pill shape is reserved for badges, where the full radius is what separates a badge from a button at a glance.</p>
+<p>Nothing is circular except the capability-matrix status dot, which is 8 px and always paired with the status word beside it.</p>
+<h2 id="components">Components</h2>
+<p>Every component below is implementable with direct DOM writes plus a small render helper — no framework, no template compiler, no virtual DOM (FR-6, NFR-3, addendum §A.6). <code>@scales-to</code> on the render helper records the condition under which a framework becomes correct: <em>list state outgrows a full re-render (per-row local state)</em>, whose replacement is a framework with a diff.</p>
+<h3 id="panel-header">Panel header</h3>
+<p>Sticky, 40 px, <code>{typography.title}</code> on the left, a settings affordance on the right. The settings affordance opens the options surface through <code>chrome.runtime.openOptionsPage()</code> — never a constructed URL. Bottom border <code>{colors.border}</code>. The header does not scroll and is never covered by a scrim.</p>
+<h3 id="module-nav">Module nav</h3>
+<p>A horizontal row of ghost buttons, one per mounted view, appearing only when more than one view is mounted. The active one is <code>{colors.accent}</code> text with a 2 px bottom rule in the same colour; the rest are <code>{colors.text-muted}</code>. It scrolls horizontally rather than wrapping, because wrapping would make the panel's chrome height variable.</p>
+<p>Its contents come from the shell's explicit import list. When a Module is deleted along with its one shell line, its nav entry disappears with it — there is no registry to clean up and no empty affordance left behind (FR-12).</p>
+<h3 id="list-row">List row</h3>
+<p>The dominant form in this extension.</p>
+<ul><li>Full-bleed to the panel gutters, <code>{spacing.row-y}</code> vertical padding, <code>{rounded.sm}</code> on the selection background.</li><li>One line of <code>{typography.body}</code> primary text, truncated with an ellipsis at the row's end, with the full value in <code>title</code>.</li><li>Optional trailing <code>{typography.meta}</code> in <code>{colors.text-faint}</code>: an index, a count, a length.</li><li><strong>Selected</strong>: background <code>{colors.accent-soft}</code>, a 2 px <code>{colors.accent}</code> left marker, primary text unchanged. Selection is exclusive — one row per list — and is carried in the markup by <strong><code>aria-current="true"</code></strong>, not <code>aria-selected</code>, which is invalid on a <code>&lt;button&gt;</code>.</li><li><strong>Hover</strong>: <code>{colors.surface-sunken}</code> background. No transform, no shadow, no motion.</li><li><strong>Focus</strong>: the focus ring, drawn inside the row so it is not clipped by the scroll container.</li></ul>
+<p>Rows are buttons, not divs with click handlers. Keyboard operation is not an enhancement here — it is the NFR-7 floor.</p>
+<h3 id="buttons">Buttons</h3>
+<table><thead><tr><th>Variant</th><th>Fill</th><th>Text</th><th>Border</th><th>Used for</th></tr></thead><tbody><tr><td>Primary</td><td><code>{colors.accent}</code></td><td><code>{colors.on-accent}</code></td><td>none</td><td>The one action that commits: Search, Fill, Unlock, Save</td></tr><tr><td>Secondary</td><td><code>{colors.surface}</code></td><td><code>{colors.text}</code></td><td>1 px <code>{colors.border-strong}</code></td><td>Cancel, Clear, Copy</td></tr><tr><td>Ghost</td><td>transparent</td><td><code>{colors.text-muted}</code></td><td>none</td><td>Icon-adjacent chrome: settings, close, nav</td></tr><tr><td>Danger</td><td>transparent</td><td><code>{colors.danger}</code></td><td>1 px <code>{colors.danger}</code></td><td>Lock, Delete, Revoke</td></tr></tbody></table>
+<p>All are <code>{spacing.control-height}</code> 28 px tall, <code>{rounded.DEFAULT}</code>, <code>{typography.body-strong}</code>, with <code>{spacing.3}</code> horizontal padding. <strong>At most one primary button is visible per region.</strong></p>
+<p><strong>Disabled</strong> is <code>aria-disabled="true"</code> and nothing else — never the native <code>disabled</code> attribute, which removes the control from the tab order, and a control a keyboard user cannot reach takes its explanation with it. The style keys off the same attribute, so the visual state and the announced state cannot drift apart. A disabled button is drawn as the Secondary variant in <code>{colors.text-faint}</code> on <code>{colors.surface}</code> with a <code>{colors.border}</code> outline, whatever variant it was when enabled. A Primary button in particular does <strong>not</strong> stay filled and fade its label: <code>{colors.text-faint}</code> on <code>{colors.accent}</code> is roughly 1.3:1 and unreadable. Losing the fill is the state change.</p>
+<p>Danger is an outline rather than a fill: a filled red button in a narrow strip dominates the panel, and none of the destructive actions here are the primary path.</p>
+<h3 id="text-input">Text input</h3>
+<p>Full width, 28 px, <code>{rounded.DEFAULT}</code>, 1 px <code>{colors.border-strong}</code>, <code>{typography.body}</code>, <code>{spacing.2}</code> horizontal padding. Placeholder in <code>{colors.text-faint}</code>.</p>
+<ul><li><strong>Focus</strong>: the focus ring; the border does not change colour, so the ring is the single focus signal everywhere in the system.</li><li><strong>Invalid</strong>: border <code>{colors.danger}</code> <em>and</em> a <code>{typography.meta}</code> message in <code>{colors.danger}</code> directly beneath. Never the border alone.</li><li><strong>Secret fields</strong> are <code>type="password"</code> with a reveal toggle, and their value is never echoed into the log stream.</li></ul>
+<p>Labels sit above the field in <code>{typography.body}</code> <code>{colors.text-muted}</code> and are <code>&lt;label for&gt;</code>-bound. Placeholder text is never a substitute for a label.</p>
+<h3 id="banner">Banner</h3>
+<p>The single component for surfacing a state the user did not ask about: a restricted page, an unmet precondition, a documented limitation, a failure.</p>
+<p><code>{rounded.DEFAULT}</code>, <code>{colors.surface-sunken}</code> background, a 2 px left border in the status colour, <code>{spacing.2}</code> <code>{spacing.3}</code> padding, <code>{typography.body}</code> text.</p>
+<p>Structure is always <strong>label, then cause, then what would change it</strong>. Where the user can act, the third part is the action. Where nobody can act, it is the condition that would have to be true instead — which is the useful thing to say, and never an apology:</p>
+<blockquote><p><strong>Restricted</strong> — Chrome pages cannot be read by extensions. Open a normal page and try again.</p><p><strong>Unavailable</strong> — Translator is not present in this browser. Requires desktop Chrome 138+.</p><p><strong>Degraded</strong> — matches split across inline markup are not found.</p></blockquote>
+<p>The label is one word, drawn from the failure vocabulary in <code>EXPERIENCE.md.Voice and Tone</code> — <code>Restricted</code>, <code>Unavailable</code>, <code>Failed</code>, <code>Unknown</code> — or <code>Degraded</code>, which is not a failure at all but a documented limitation in force while the feature works.</p>
+<p>Banners are placed at the top of the view region, never floated, never auto-dismissed, and never stacked more than one deep — a second condition replaces the first rather than queueing beneath it.</p>
+<h3 id="badge">Badge</h3>
+<p><code>{rounded.full}</code>, <code>{typography.meta}</code>, <code>{spacing.2}</code> horizontal padding, 20 px tall, 1 px <code>{colors.border-strong}</code> border, <code>{colors.text-muted}</code> text.</p>
+<p>Two uses only: <strong>tier</strong> (<code>required</code> / <code>optional</code>) and <strong>Chrome floor</strong> (<code>chrome 138</code>). Both are set in <code>{typography.mono}</code> at 11 px because both are machine facts. Badges are never coloured — a required Module is not a good Module and an optional one is not a warning.</p>
+<h3 id="dialog">Dialog</h3>
+<p>The only overlay in the system. Renders inside the panel above the scrim, <code>{colors.surface-raised}</code>, <code>{rounded.lg}</code>, 1 px <code>{colors.border}</code>, the one shadow token, <code>{spacing.4}</code> padding.</p>
+<p>Anatomy: <code>{typography.title}</code> title, one column of stacked fields, at most two actions right-aligned at the bottom with the primary last. No dialog in this repository has a third action, and none is more than one screen tall in a 320 px panel — if it would be, it is an options surface concern rather than a dialog.</p>
+<p>Focus moves to the first field on open and is trapped until close. <code>Escape</code> cancels. <code>Enter</code> in the last field commits. On close, focus returns to the control that opened it.</p>
+<h3 id="capability-matrix-row">Capability matrix row</h3>
+<p>Developer Mode only. One row per Tier Optional Module present in the build:</p>
+<pre><code>● find-text                  available     chrome 105 / running 151
+● translate-selection        unavailable   requires desktop Chrome 138+
+● key-webauthn               unknown       PRF support not yet probed</code></pre>
+<p>Module name in <code>{typography.body}</code>, verdict word in the status colour, right column in <code>{typography.mono-sm}</code> <code>{colors.text-faint}</code> showing the declared <code>@chrome-min</code> against the running version. The 8 px dot repeats the status colour and is always redundant with the word.</p>
+<p>The matrix is derived from the Modules present, so deleting a Module deletes its row. There is no list of modules to maintain (FR-28, NFR-3).</p>
+<h3 id="log-stream-row">Log stream row</h3>
+<p>Developer Mode only. <code>{colors.surface-sunken}</code> region, <code>{typography.mono-sm}</code>, 2 px vertical padding, four columns:</p>
+<pre><code>12:04:31.882  sw     msg:find-text/search     →req
+12:04:31.886  cs     msg:find-text/search     ←res  4ms
+12:04:32.140  panel  render 12 matches</code></pre>
+<p>Timestamp in <code>{colors.text-faint}</code>; Surface tag in <code>{colors.text-muted}</code>; message in <code>{colors.text}</code>; a request with no matching response is marked <code>→req</code> in <code>{colors.warning}</code> and stays that way, which is how FR-27 makes a hung call visible.</p>
+<p><strong>Capacity is 500 entries, oldest discarded first.</strong> The buffer lives in <code>storage.session</code>, survives service-worker termination, and is cleared on browser restart. When the buffer is full, the stream shows <code>500 entries (oldest discarded)</code> in <code>{typography.meta}</code> at its head — the truncation is stated, never silent.</p>
+<p>No virtualisation. 500 rows of plain DOM is the reason the number is 500.</p>
+<h3 id="inspector-table">Inspector table</h3>
+<p>Developer Mode only. Two columns — key in <code>{typography.mono-sm}</code> <code>{colors.text-muted}</code>, value in <code>{typography.mono-sm}</code> <code>{colors.text}</code> — with a 1 px <code>{colors.border}</code> between rows and <code>{colors.surface-sunken}</code> behind. Used by the storage and permission inspectors.</p>
+<p>Long values wrap rather than truncate, because the point of the storage inspector is to show that <code>features/secret-box/</code> really did store ciphertext. The ciphertext is displayed in full, in monospace, deliberately unreadable — that is the demonstration.</p>
+<h3 id="progress">Progress</h3>
+<p>One form: a 2 px determinate bar in <code>{colors.accent}</code> on a <code>{colors.border}</code> track, full panel width, with <code>{typography.meta}</code> text beneath giving the percentage. It exists for exactly one case, the first-use translation model download, and it is paired with a sentence saying what is downloading and that it happens once.</p>
+<p>No spinners. An operation that cannot report progress reports its state as text in the status line instead.</p>
+<h3 id="status-line">Status line</h3>
+<p>The 24 px strip at the foot of the panel, <code>{typography.meta}</code> <code>{colors.text-faint}</code>, present whenever the active view has anything to say about itself. It carries three things and only these:</p>
+<ul><li><strong>A count</strong>, standing: <code>12 matches · 2 of 12 selected</code>.</li><li><strong>A verb in progress</strong>, while an action is in flight: <code>searching…</code>. This is why there are no spinners and no skeletons.</li><li><strong>A completed outcome</strong>, transiently: <code>copied to clipboard</code>, <code>saved</code>, <code>unlocked</code>. It appears on completion, stays for 3 seconds, and reverts to the count.</li></ul>
+<p><strong>This is the only success channel in the system.</strong> Toasts are banned, and a banner is for states the user did not ask about — an action that succeeded is not one. An action whose success would otherwise be invisible must be observable here, or it is not finished.</p>
+<h3 id="empty-state">Empty state</h3>
+<p><code>{typography.body}</code> <code>{colors.text-muted}</code>, centred in the view region, one sentence saying what will appear here and what to do to make it appear. No illustration, no icon, no heading. An empty state that offers an action renders it as a secondary button beneath the sentence.</p>
+<h3 id="focus-ring">Focus ring</h3>
+<p><code>2px solid {colors.accent}</code> with <code>1px</code> offset, on every focusable element, in both themes, everywhere. It is never removed, never replaced by a colour change, and never suppressed by <code>:focus-visible</code> heuristics in the panel — a side panel is a keyboard surface as much as a pointer one.</p>
+<h2 id="dos-and-donts">Do's and Don'ts</h2>
+<table><thead><tr><th>Do</th><th>Don't</th></tr></thead><tbody><tr><td>Write <code>@permissions none</code> and <code>@chrome-min baseline</code> explicitly</td><td>Omit a mandatory tag and leave an agent to infer zero cost</td></tr><tr><td>Split a file when it needs a second <code>@pitfall</code></td><td>Stretch the block to seven lines, or drop the second pitfall</td></tr><tr><td>State both halves of <code>@scales-to</code>, separated by <code> -&gt; </code></td><td>Name a ceiling with no replacement, or a replacement with no trigger</td></tr><tr><td>Let <code>AGENTS.md</code> reference the Annotation Block</td><td>Restate <code>@tier</code>, <code>@pitfall</code>, or <code>@alternative</code> in <code>AGENTS.md</code> (L13 fails it)</td></tr><tr><td>Argue for <code>required</code>; default to <code>optional</code></td><td>Promote to <code>core/</code> for a single consumer (SM-C2)</td></tr><tr><td>Route document APIs to the side panel first</td><td>Reach for an offscreen document before trying the panel</td></tr><tr><td>Pass identifiers up the privilege gradient</td><td>Relay a URL or an executable string from page context</td></tr><tr><td>Use <code>{colors.accent}</code> for exactly one live thing per region</td><td>Accent a heading, a border, or a second element for emphasis</td></tr><tr><td>Pair every status colour with its status word</td><td>Let colour be the only carrier of a state</td></tr><tr><td>Keep the ramp at seven type roles</td><td>Add an eighth without deleting one</td></tr><tr><td>Separate with a hairline and a tonal step</td><td>Introduce a second shadow, or an elevation scale</td></tr><tr><td>Let the panel reflow from 320 px to 800 px</td><td>Add a breakpoint inside the panel</td></tr><tr><td>Set machine facts in monospace</td><td>Set prose in monospace, or use it for emphasis</td></tr><tr><td>Render the options form from the configuration schema</td><td>Hand-author per-key markup that discipline must keep in sync</td></tr><tr><td>Show <code>500 entries (oldest discarded)</code> when the buffer wraps</td><td>Let truncation be silent</td></tr><tr><td>Put a success outcome in the status line</td><td>Reach for a toast, or a banner, for something the user asked for</td></tr><tr><td>Disable with <code>aria-disabled</code> and lose the fill</td><td>Use the native <code>disabled</code> attribute, or fade a label on a filled button</td></tr><tr><td>Keep every control keyboard-reachable with an accessible name</td><td>Claim a WCAG conformance level this repository does not verify</td></tr></tbody></table>
+<hr>
+<h2 id="related-documents">Related documents</h2>
+<ul><li><strong><a href="./EXPERIENCE.md">EXPERIENCE.md</a></strong> — behaviour, information architecture, state semantics, interaction, accessibility, and key flows. Subordinate to this document.</li><li><strong>Key-screen mocks</strong> — <a href="./_bmad-output/planning-artifacts/ux-designs/ux-basic-chrome-extension-2026-08-08/mockups/key-screens.html"><code>_bmad-output/planning-artifacts/ux-designs/ux-basic-chrome-extension-2026-08-08/mockups/key-screens.html</code></a>. Reference renderings of the side panel, options surface, dialog, and Developer Mode in both themes. <strong>This document wins on conflict with any mock.</strong></li><li><strong>PRD</strong> — <code>_bmad-output/planning-artifacts/prds/prd-basic-chrome-extension-2026-08-08/prd.md</code>, with rejected alternatives in <code>addendum.md</code>. The addendum's §C pitfall register is <strong>inlined above</strong> under <em>Pitfall Register</em>; the copy in this document is the normative one.</li><li><strong>Architecture spine</strong> — <code>_bmad-output/planning-artifacts/architecture/architecture-basic-chrome-extension-2026-08-08/ARCHITECTURE-SPINE.md</code>. Structural decisions AD-1 – AD-27: the kernel's file list, dependency direction, the messaging envelope, the runnable commands, and the Acceptance Check's fixture. It is <strong>subordinate to this document</strong> and may not contradict it.</li><li><strong>Technical research</strong> — <code>_bmad-output/planning-artifacts/research/technical-chrome-extension-mv3-reference-starter-research-2026-08-08.md</code>, Chrome 151 baseline.</li></ul>
+<h2 id="open-items-owned-elsewhere">Open items owned elsewhere</h2>
+<p>These affect Module shape but not this document's rules, and are tracked in PRD §14:</p>
+<ul><li><strong>Spike D10</strong> — extension-scoped authenticator identity. If it fails, <code>key-webauthn.js</code> becomes documentation-only; the capability matrix row for it remains, reporting <code>unavailable</code>.</li><li><strong>Spike D11</strong> — framework-controlled input injection from the <code>ISOLATED</code> world. Determines whether <code>features/fill-input/</code> needs a <code>MAIN</code>-world file and the <code>@alternative</code> line that R3 requires for one.</li><li><strong>Spike D12</strong> — on-device translation from the side panel. If the panel cannot host it, the offscreen fallback in R2 applies and one Core Module is added.</li></ul>
+<p><em>PRD §14 item 7 — the base <code>minimum_chrome_version</code> — is <strong>closed</strong>. The Required set was audited and the number is fixed at 116 in</em> Fixed Numbers.</p>
+</body>
+</html>

@@ -37,7 +37,7 @@ The handover carries five things:
 **The test: if a fresh session cannot start from the handover alone, it is
 incomplete.** A line naming the next story number does not satisfy this rule.
 
-## Amending DESIGN.md and EXPERIENCE.md
+## Amending DESIGN.html and EXPERIENCE.md
 
 Both carry `status: final`, and both may still be revised **until story 7.5 tags
 a release**. That is the boundary because 7.5 is the point at which every claim
@@ -53,15 +53,15 @@ Four constraints on the amendment:
 - **Its own commit.** Never fold a document amendment into a story commit —
   the story commit says what was built, the amendment says what the repository
   now believes. Stories 1.6, 1.7 and 1.9 all landed theirs separately.
-- **Precedence is unchanged.** The PRD outranks `DESIGN.md`, which outranks
+- **Precedence is unchanged.** The PRD outranks `DESIGN.html`, which outranks
   `EXPERIENCE.md`. This rule grants no permission over the PRD: an amendment
   that would contradict it is a product decision, not a documentation fix. Where
-  `DESIGN.md` and `EXPERIENCE.md` disagree, `DESIGN.md` wins and `EXPERIENCE.md`
+  `DESIGN.html` and `EXPERIENCE.md` disagree, `DESIGN.html` wins and `EXPERIENCE.md`
   is the defect.
 - **Nothing else is covered.** `ARCHITECTURE-SPINE.md` and the PRD are outside
   this rule and still need approval — story 1.8 Q1 found an error in the spine's
   floor-audit table and correctly left it standing.
 
 When an amendment lands, update every planning artifact that restates the same
-rule. `requirements-inventory.md` summarises `DESIGN.md`, and a summary that
+rule. `requirements-inventory.md` summarises `DESIGN.html`, and a summary that
 outlives its source is how a later story inherits a rule nobody holds any more.
