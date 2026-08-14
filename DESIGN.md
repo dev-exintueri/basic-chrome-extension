@@ -20,6 +20,9 @@ colors:
   success: '#116B3C'
   warning: '#8A5300'
   danger: '#B3261E'
+  # The dialog scrim. A colour like any other, and theme-dependent like any other,
+  # so it lives here rather than as a literal in a composition root's stylesheet.
+  scrim: 'rgba(0, 0, 0, 0.32)'
   # Dark. Redefined under prefers-color-scheme: dark; nothing else changes.
   surface-dark: '#17191C'
   surface-sunken-dark: '#101215'
@@ -35,6 +38,7 @@ colors:
   success-dark: '#5FD08C'
   warning-dark: '#E2B04A'
   danger-dark: '#F1867E'
+  scrim-dark: 'rgba(0, 0, 0, 0.56)'
 typography:
   family-ui:
     fontFamily: "system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
@@ -616,7 +620,7 @@ No animation beyond a state change becoming visible. No decorative iconography. 
 
 ## Colors
 
-Two ramps — neutral and semantic — defined as CSS custom properties on `:root`, redefined once under `@media (prefers-color-scheme: dark)`. There is no in-extension theme toggle: Chrome owns that preference and duplicating it would be a config key that exists to fight the browser. A downstream project that wants an explicit toggle overrides the same custom properties under an `html[data-theme]` selector, which is a change to their shell, not to any copied Module.
+Two ramps — neutral and semantic — plus the dialog scrim (`{colors.scrim}`, specified under *Elevation & Depth*), defined as CSS custom properties on `:root` and redefined once under `@media (prefers-color-scheme: dark)`. There is no in-extension theme toggle: Chrome owns that preference and duplicating it would be a config key that exists to fight the browser. A downstream project that wants an explicit toggle overrides the same custom properties under an `html[data-theme]` selector, which is a change to their shell, not to any copied Module.
 
 ### Neutral ramp
 
@@ -741,7 +745,9 @@ The reason is portability. A copied Module's CSS should carry at most one shadow
 
 In dark mode the shadow does almost nothing — dark surfaces absorb it. `{colors.surface-raised}` `#1E2126` is a real tonal step above `{colors.surface}` `#17191C` for that reason, and the dialog border does the rest of the work.
 
-The scrim behind a dialog is `rgba(0, 0, 0, 0.32)` in light and `rgba(0, 0, 0, 0.56)` in dark. It covers the view region and the status line, and it does **not** cover the panel header — the settings link stays reachable, because a dialog that traps the user in a 288 px box with no visible exit is the panel equivalent of a modal with no close button.
+The scrim behind a dialog is `{colors.scrim}` `rgba(0, 0, 0, 0.32)` in light and `rgba(0, 0, 0, 0.56)` in dark. It covers the view region and the status line, and it does **not** cover the panel header — the settings link stays reachable, because a dialog that traps the user in a 288 px box with no visible exit is the panel equivalent of a modal with no close button.
+
+**The scrim is a token, not a literal, and the reason is structural.** It has two theme-dependent values, so a literal in a composition root's stylesheet cannot express the second one without that stylesheet declaring its own `@media (prefers-color-scheme: dark)` block — which would put a second dark redefinition in the repository and the dark half of a colour outside `ui/tokens.css`, contradicting *Colors* above ("redefined once") and AD-25 ("once, on `:root`, with a single dark redefinition"). Story 1.9 left it undecided because that story's acceptance criteria named a closed list of fourteen colour tokens; story 1.10 draws the scrim and resolved it here. It carries no contrast obligation — it is not a text-bearing pair — and it is the one colour token that is not part of either ramp.
 
 ## Shapes
 

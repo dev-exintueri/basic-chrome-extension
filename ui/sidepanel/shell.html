@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--
+ * @tier required
+ * @chrome-min 116
+ * @permissions sidePanel
+ * @pitfall A newline inside #status or #dialog-root is a text node, so :empty stops matching.
+ * @alternative Chrome's own side-panel dropdown at 114 -- no gesture this extension owns opens it.
+ * @scales-to A surface must cover every view at once -> hide #view-region, never each section.
+ -->
+<meta charset="utf-8">
+<title>basic-chrome-extension</title>
+
+<!--
+  The side panel document, and the only place the three landmarks core/panel.js
+  acts on are declared: #views, #status and #dialog-root (AD-10). A consumer's
+  own shell declares the same three and gets the same services; that is the whole
+  contract, and it is why no view ever imports this file.
+
+  The block above uses one ` * ` per line rather than a bare tag per line. The
+  carrier is the HTML comment, as DESIGN.md's carrier table says, but its lint
+  regex requires every tag line to begin with `*` or `<!--`, and a block of bare
+  lines matches NONE of the six tags -- which would leave this Module declaring no
+  permission and no floor, and its Manifest Fragment failing L12 for declaring
+  both. Measured against the regex DESIGN.md prints; see the story's Debug Log.
+
+  The token sheet is linked first so shell.css can override nothing and consume
+  everything. Both stylesheets reach every value through var(--token, <literal>),
+  so a shell copied without ui/tokens.css still renders at this repository's
+  light-mode defaults instead of unstyled (AD-25).
+-->
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="shell.css">
+<script type="module" src="shell.js"></script>
+</head>
+
+<body>
+<header class="panel-header">
+  <h1 class="title">basic-chrome-extension</h1>
+  <button type="button" class="btn ghost" id="settings">Settings</button>
+</header>
+
+<nav class="module-nav" id="module-nav" aria-label="Modules" hidden></nav>
+
+<!--
+  Present from mount and populated on change: a live region inserted at the same
+  moment as its text is frequently not announced at all (EXPERIENCE.md). The role
+  lives on the container for that reason, not on the banner.
+-->
+<div id="banner" role="alert"></div>
+
+<!--
+  Exactly what the dialog scrim covers, and nothing else. DESIGN.md scopes the
+  scrim to "the view region and the status line" and leaves the header reachable;
+  UX-DR12 says the same. Expressing that as this element's bounds rather than as
+  an offset means there is no number to keep equal to the header's height in two
+  places, and no way for the scrim to creep over the nav or the banner.
+
+  A consumer's own shell needs this wrapper too, or #dialog-root's `inset: 0`
+  resolves against the viewport and the dialog covers the whole panel. It is in
+  AGENTS.md step 1 for that reason.
+-->
+<div id="view-region">
+  <div id="views"></div>
+
+  <!--
+    Written on one line on purpose. :empty is what collapses the strip when the
+    active view has nothing to say, and a formatting newline is a text node that
+    stops it matching -- a 24px strip that never goes away, with nothing raised.
+    The same applies to #dialog-root, which core/panel.js empties with clear().
+  -->
+  <div class="status-line" id="status" role="status"></div>
+  <div id="dialog-root"></div>
+</div>
+</body>
+</html>

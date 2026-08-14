@@ -1,0 +1,345 @@
+/*
+ * @tier required
+ * @chrome-min baseline
+ * @permissions none
+ * @pitfall A var() inside a token fallback drops the whole declaration where no sheet exists.
+ * @alternative Styling the component classes here -- a copied view would then render unstyled.
+ * @scales-to A second panel-shaped surface appears -> promote this chrome to ui/chrome.css.
+ */
+
+/* The panel's own chrome, and nothing else.
+ *
+ * WHAT THIS FILE DOES NOT STYLE, AND WHY IT MATTERS. Every selector below begins
+ * at a landmark -- :root, body, body > .panel-header, body > .module-nav,
+ * #banner, #view-region, #views, #status, #dialog-root -- so none of them can
+ * match an element inside #views. The two class-named regions reach their class through a CHILD
+ * combinator for that reason: a bare .module-nav would style a view that used
+ * the same class name, in this repository only. So would a bare .panel-button,
+ * which is why core/panel.js's dialog classes are written under #dialog-root
+ * rather than on their own. Only
+ * inheritance from `body` crosses into a view, which is what inheritance is for
+ * and what a stranger's shell does too. A rule like `.btn { ... }` here
+ * would style every Module's buttons IN THIS REPOSITORY ONLY, so a Module could
+ * ship with no button rules of its own, look correct here, and render unstyled
+ * the moment it is copied into a stranger's extension. AD-23 puts a view's rules
+ * in its own view.css scoped under .m-<module-name>, and this file staying out
+ * of #views is what keeps that testable rather than merely stated.
+ *
+ * EVERY VALUE IS var(--token, <literal>). The literal is the light-mode default
+ * from DESIGN.md, and it is required rather than tolerated (AR-25): a shell
+ * copied without ui/tokens.css degrades to the right colours instead of to the
+ * host's. The typography fallbacks re-type the whole ~100-character font stack
+ * because a var() inside a fallback is unresolvable exactly where the fallback
+ * is needed, which makes the WHOLE declaration invalid at computed-value time --
+ * measured in story 1.9 as 30px Georgia instead of 13px system-ui. Folding the
+ * stack back into var(--font-ui) reintroduces that defect.
+ *
+ * THERE IS NO @media IN THIS FILE. No breakpoint, because the panel is a strip
+ * that reflows from 320px to 800px (UX-DR10); and no second colour-scheme block,
+ * because every theme-dependent value including the scrim is a token declared
+ * once in ui/tokens.css (UX-DR2, AD-25).
+ */
+
+:root {
+  /* Chrome draws native controls, form widgets and scrollbars in light UA
+   * styling over a dark surface without this. It cannot live in ui/tokens.css:
+   * it is not a custom property and has no var() fallback, so a harvested slice
+   * could not carry it. Each composition root declares its own. */
+  color-scheme: light dark;
+  height: 100%;
+}
+
+body {
+  height: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface, #FFFFFF);
+  color: var(--text, #1B1F24);
+  font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+/* 01 Panel header -- 40px, never scrolls, never covered by the scrim.
+ * It is a flex item outside the scroll container rather than position: sticky,
+ * which is a stronger guarantee than DESIGN.md's word "sticky" asks for: there
+ * is no scroll position at which it could move. */
+body > .panel-header {
+  flex: none;
+  box-sizing: border-box;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--panel-gutter, 12px);
+  border-bottom: 1px solid var(--border, #DCE0E5);
+  background: var(--surface, #FFFFFF);
+}
+
+body > .panel-header .title {
+  font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  margin: 0;
+}
+
+/* The one button this shell renders. Anchored under the header so the rule
+ * cannot reach a Module's own .btn inside #views. */
+body > .panel-header .btn.ghost {
+  box-sizing: border-box;
+  height: var(--control-height, 28px);
+  padding: 0 var(--space-3, 12px);
+  border: 1px solid transparent;
+  border-radius: var(--radius, 4px);
+  background: transparent;
+  color: var(--text-muted, #5A636D);
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  cursor: pointer;
+}
+
+/* In flight, the settings affordance carries aria-disabled and stays focusable,
+ * so the explanation stays reachable (UX-DR17, UX-DR33). It loses its fill and
+ * is drawn as Secondary in text-faint, whatever variant it was. */
+body > .panel-header .btn[aria-disabled='true'] {
+  background: var(--surface, #FFFFFF);
+  color: var(--text-faint, #697079);
+  border-color: var(--border, #DCE0E5);
+  cursor: default;
+}
+
+/* Everything the scrim covers, and nothing else. position: relative is what
+ * makes the scrim's inset: 0 mean "the view region and the status line" --
+ * DESIGN.md's own words. An earlier shape wrapped the nav and the banner in here
+ * too and dimmed both, which exceeds the extent DESIGN.md and UX-DR12 state.
+ * Code review measured it; the wrapper was narrowed rather than the rule
+ * amended, because a preference is not a measurement. */
+#view-region {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* 02 Module nav -- 32px, shown only when more than one view is mounted.
+ * Scrolls horizontally rather than wrapping, because wrapping would make the
+ * panel's chrome height variable. */
+body > .module-nav {
+  flex: none;
+  box-sizing: border-box;
+  height: 32px;
+  display: flex;
+  gap: var(--space-1, 4px);
+  align-items: stretch;
+  padding: 0 var(--panel-gutter, 12px);
+  border-bottom: 1px solid var(--border, #DCE0E5);
+  overflow-x: auto;
+}
+
+/* MEASURED: without this the nav does not hide. `[hidden] { display: none }` is
+ * a UA-origin rule and `display: flex` above is author-origin, so the author
+ * rule wins unconditionally -- nav.hidden = true left a 32px strip with a border
+ * under the header at zero and one mounted views, with its buttons still
+ * focusable. Found by code review; the gate had asserted the `hidden` PROPERTY
+ * rather than the rendered box, so it passed straight through the defect. */
+body > .module-nav[hidden] {
+  display: none;
+}
+
+body > .module-nav .nav-item {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  padding: 0 var(--space-2, 8px);
+  color: var(--text-muted, #5A636D);
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+body > .module-nav .nav-item[aria-current='true'] {
+  color: var(--accent, #1D4ED8);
+  border-bottom-color: var(--accent, #1D4ED8);
+}
+
+/* 06 Banner -- the shell's own, for a state the user did not ask about. A view
+ * renders its banners inside its own root (AD-10); this one is the shell's,
+ * because the affordance that produced it is the shell's. */
+#banner {
+  flex: none;
+}
+
+#banner .banner {
+  background: var(--surface-sunken, #F5F6F7);
+  border-left: 2px solid var(--text-muted, #5A636D);
+  border-radius: var(--radius, 4px);
+  margin: var(--space-2, 8px) var(--panel-gutter, 12px) 0;
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+}
+
+#banner .banner .label {
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+/* Status colour is text and a 2px left border, never a filled block: a filled
+ * red panel in a 320px strip reads as a crash (UX-DR4). */
+#banner .banner.unavailable {
+  border-left-color: var(--danger, #B3261E);
+}
+
+#banner .banner.unavailable .label {
+  color: var(--danger, #B3261E);
+}
+
+#banner .banner.failed {
+  border-left-color: var(--danger, #B3261E);
+}
+
+#banner .banner.failed .label {
+  color: var(--danger, #B3261E);
+}
+
+/* restricted and unknown take warning; unavailable and failed take danger. The
+ * mapping is EXPERIENCE.md's, and all four are here because showBanner writes
+ * whichever code it is given as a class -- two of the four used to fall through
+ * to the neutral border, so colour stopped distinguishing them. */
+#banner .banner.restricted,
+#banner .banner.unknown {
+  border-left-color: var(--warning, #8A5300);
+}
+
+#banner .banner.restricted .label,
+#banner .banner.unknown .label {
+  color: var(--warning, #8A5300);
+}
+
+/* The view region. flex:1 and the only scroll container in the panel, which is
+ * also why shell.js saves and restores scrollTop per Module: the position is
+ * shared between views, so toggling `hidden` preserves each view's DOM for free
+ * and its scroll position not at all (UX-DR15). */
+#views {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 13 Status line -- 24px, and present in the DOM from mount whether or not the
+ * active view has anything to say (UX-DR26). */
+#status {
+  flex: none;
+  box-sizing: border-box;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--panel-gutter, 12px);
+  border-top: 1px solid var(--border, #DCE0E5);
+  font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  color: var(--text-faint, #697079);
+}
+
+/* UX-DR10 wants the strip only when the active view has a count; UX-DR26 and
+ * EXPERIENCE.md want the live region present from mount. Collapsing it is the
+ * only shape that satisfies both -- display: none would remove the region from
+ * the accessibility tree, and a region that appears together with its text is
+ * frequently never announced. */
+#status:empty {
+  height: 0;
+  border-top-width: 0;
+}
+
+/* 08 Dialog and scrim. core/panel.js builds this markup and says in its own
+ * JSDoc that positioning belongs here. The root is inert while empty, so an
+ * overlay covering the whole panel body eats no clicks between dialogs. */
+#dialog-root {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#dialog-root .panel-scrim {
+  position: absolute;
+  inset: 0;
+  background: var(--scrim, rgba(0, 0, 0, 0.32));
+  pointer-events: auto;
+}
+
+/* The panel width minus spacing.4 on each side, so a dialog is 288px at the
+ * 320px floor (UX-DR12). */
+#dialog-root .panel-dialog {
+  position: absolute;
+  left: var(--space-4, 16px);
+  right: var(--space-4, 16px);
+  top: var(--space-4, 16px);
+  max-height: calc(100% - var(--space-8, 32px));
+  overflow-y: auto;
+  box-sizing: border-box;
+  padding: var(--space-4, 16px);
+  background: var(--surface-raised, #FFFFFF);
+  border: 1px solid var(--border, #DCE0E5);
+  border-radius: var(--radius-lg, 8px);
+  box-shadow: var(--shadow-dialog, 0 8px 24px rgba(0, 0, 0, 0.18));
+  pointer-events: auto;
+}
+
+#dialog-root .panel-dialog-title {
+  font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  margin: 0 0 var(--space-3, 12px);
+}
+
+#dialog-root .panel-dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+/* At most two actions, right-aligned, primary last (UX-DR21). The spec
+ * core/panel.js accepts cannot express a third. */
+#dialog-root .panel-dialog-actions {
+  display: flex;
+  gap: var(--space-2, 8px);
+  justify-content: flex-end;
+  margin-top: var(--space-4, 16px);
+}
+
+#dialog-root .panel-button {
+  box-sizing: border-box;
+  height: var(--control-height, 28px);
+  padding: 0 var(--space-3, 12px);
+  border: 1px solid transparent;
+  border-radius: var(--radius, 4px);
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  cursor: pointer;
+}
+
+#dialog-root .panel-button.primary {
+  background: var(--accent, #1D4ED8);
+  color: var(--on-accent, #FFFFFF);
+}
+
+#dialog-root .panel-button.secondary {
+  background: var(--surface, #FFFFFF);
+  color: var(--text, #1B1F24);
+  border-color: var(--border-strong, #BFC6CD);
+}
+
+/* 15 Focus ring -- 2px accent, 1px offset, never removed and never conditional.
+ * :focus rather than :focus-visible: a side panel is a keyboard surface as much
+ * as a pointer one, and the heuristic hides the ring from a pointer user who is
+ * about to press a key (UX-DR28).
+ *
+ * The dialog ROOT is excluded. core/panel.js gives it tabindex="-1" and focuses
+ * it when the content region holds nothing focusable -- a confirm-only dialog is
+ * the ordinary case -- and a 2px accent ring around the whole 288px surface
+ * makes the dialog read as a selected control and puts a second accent in one
+ * visible region (UX-DR3). The ring marks a focused CONTROL; the dialog root is
+ * a focus container, not a control.
+ *
+ * Scoped to the shell's own chrome for the same reason nothing else here is
+ * global: a Module carries its own ring in its own view.css, so a copied view
+ * keeps it in a stranger's shell. The cost is that every view.css repeats these
+ * two declarations, and that cost is the AD-23 contract being honest. */
+body > .panel-header :focus,
+body > .module-nav :focus,
+#banner :focus,
+#dialog-root :focus:not(.panel-dialog) {
+  outline: 2px solid var(--accent, #1D4ED8);
+  outline-offset: 1px;
+}
