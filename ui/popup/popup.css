@@ -100,11 +100,16 @@ body > .summary {
 /* Status colour is text and a 2px left border, never a filled block: a filled
  * red rectangle in a 320px popup reads as a crash (UX-DR4).
  *
- * All four codes are mapped, not only the two this file's own JavaScript can
- * produce. showBanner writes whichever code it is given as a class, and in
- * shell.css two of the four used to fall through to the neutral border -- so
- * colour stopped distinguishing them, silently, for whichever code was added
- * next. The mapping is EXPERIENCE.md's. */
+ * TWO CODES, NOT FOUR, AND THE ROLE IS WHY. popup.js can produce `unavailable`
+ * and `failed` and nothing else -- showBanner is private to that file and every
+ * call site is in it. Both are danger, which is what makes the fixed
+ * role="alert" on #banner in popup.html correct for everything this surface can
+ * say. Mapping `restricted` and `unknown` here as well would have been cheap
+ * futureproofing that quietly contradicts that role: UX-DR19 gives the two
+ * warning codes role="status", and a live region cannot honestly change its role
+ * after mount. So the stylesheet says exactly what the document can announce,
+ * and adding a third code means editing this file at the same time -- which is
+ * the point, because that is when the role has to be reconsidered too. */
 #banner .banner.unavailable {
   border-left-color: var(--danger, #B3261E);
 }
@@ -119,16 +124,6 @@ body > .summary {
 
 #banner .banner.failed .label {
   color: var(--danger, #B3261E);
-}
-
-#banner .banner.restricted,
-#banner .banner.unknown {
-  border-left-color: var(--warning, #8A5300);
-}
-
-#banner .banner.restricted .label,
-#banner .banner.unknown .label {
-  color: var(--warning, #8A5300);
 }
 
 /* 04 Buttons -- the one control, anchored under its paragraph so the rule cannot
@@ -181,9 +176,14 @@ body > .note {
  *
  * Scoped to this file's own chrome for the same reason nothing else here is
  * global. The cost is that every surface repeats these two declarations, and
- * that cost is the AD-23 contract being honest. */
-body > .action :focus,
-#banner :focus {
+ * that cost is the AD-23 contract being honest.
+ *
+ * There is no `#banner :focus` companion. shell.css carries one; here showBanner
+ * appends a div, a span and a text node and nothing else, so the rule could never
+ * match. AC7 closes this file's selector surface in both directions precisely so
+ * a rule that measures nothing cannot sit inside an anchor that is otherwise in
+ * use, which is the coarse-grain shape of the story-1.9 defect. */
+body > .action :focus {
   outline: 2px solid var(--accent, #1D4ED8);
   outline-offset: 1px;
 }

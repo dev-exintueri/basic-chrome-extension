@@ -42,17 +42,32 @@ import { makeError } from '../../core/errors.js';
  * one place a Consuming Agent will look.
  *
  * **The silent failure this surface has and no other surface here does.** A
- * popup's document is destroyed the moment the popup closes, and every pending
- * promise goes with it: no rejection, no console line, no trace. So a failure
- * that resolves *after* the popup is gone is a failure nobody will ever see --
- * the user is left believing the panel opened. Nothing in this file can repair
- * that; the only real remedy is to not put work in a popup, which is the
- * argument the surface exists to make. It is on the tag because it produces a
- * wrong result while raising nothing, which is the Pitfall Register's admission
- * criterion, and the register is a floor rather than a ceiling.
+ * popup's document is destroyed the moment the popup closes. A promise still
+ * pending at that point has nothing left to settle into, so a failure that would
+ * have resolved *after* the popup is gone reaches no banner and no console the
+ * user still has open -- they are left believing the panel opened. Nothing in
+ * this file can repair that; the only real remedy is to not put work in a popup,
+ * which is the argument the surface exists to make.
+ *
+ * It is on the tag because it produces a wrong result while raising nothing,
+ * which is the Pitfall Register's admission criterion, and the register is a
+ * floor rather than a ceiling. **It is reasoned from the popup lifecycle, not
+ * measured**: reaching it needs a real popup being dismissed, which is the class
+ * of thing `popup-check.cjs` cannot drive at all -- it reaches this document as a
+ * tab, and a tab is not destroyed by a click into a page. The story records that
+ * as an open question rather than letting the tag imply an experiment.
  */
 
-/** The id of the one control, used by three functions and typed once. */
+/**
+ * The id of the one control.
+ *
+ * Named here because two functions look it up. It is **not** the only place the
+ * id is written -- `popup.html` carries the same string as an attribute, and a
+ * constant on this side cannot keep that side in sync. If the two drift, `start`
+ * finds nothing to wire and `openPanel` finds nothing to enable; the surface then
+ * renders with a permanently disabled button, which is the loudest failure a
+ * document with no logger can produce.
+ */
 const CONTROL = 'open-panel';
 
 /**
@@ -86,9 +101,17 @@ let tabId = null;
  *
  * `chrome.tabs.TAB_ID_NONE` is `-1` and belongs to a window with no real tab --
  * a devtools window, an app window. It is a number, so a bare `typeof` test
- * admits it and `open()` is then refused with `No tab with id: -1`, a
- * vanished-tab diagnosis for a tab that never existed. Non-negative is the test
- * (`core/tabs.js` reaches the same conclusion for the injection path).
+ * admits it, and the refusal that follows names a vanished tab rather than one
+ * that never existed. Non-negative is the test. Story 1.8 measured that shape on
+ * the injection path and `core/tabs.js` states the refusal string; **this file
+ * has not measured it on `open()`** and does not quote one.
+ *
+ * **A toolbar popup can probably never see it.** It opens only from a browser
+ * window's toolbar, and such a window always has an active tab -- closing the
+ * last one closes the window; a devtools or app window has no toolbar to click.
+ * The guard stays because it costs one comparison and because this file is
+ * copied into surfaces whose reachability nobody here can know, but nothing in
+ * this repository has produced the branch outside a harness that stubs the query.
  *
  * @returns {Promise<number | null>}
  */
@@ -128,6 +151,51 @@ function showBanner(error) {
 }
 
 /**
+ * Which of the four words a refused `open()` is, decided from the manifest
+ * rather than from Chrome's prose.
+ *
+ * **Measured, and it is the reason this function exists.** With `ui/popup/`'s
+ * Manifest Fragment merged and no `side_panel` key anywhere, a real click reaches
+ * `chrome.sidePanel.open()` and Chrome rejects it with
+ * `No active side panel for tabId: <n>`. Reporting that as `failed` tells the
+ * user to *try again* -- and no number of retries can add a manifest key. The
+ * word for a precondition of this build that nobody can act on right now is
+ * `unavailable` (AR-8, EXPERIENCE.md *Failure vocabulary*).
+ *
+ * There are two such preconditions and they fail differently. Without the
+ * `sidePanel` permission the namespace is not injected at all, so
+ * `chrome.sidePanel.open` **throws synchronously** rather than rejecting. Without
+ * the `side_panel` key the namespace exists and the promise rejects. Both arrive
+ * here.
+ *
+ * **Branch on a fact, never on Chrome's English.** A repository that matched the
+ * rejection text would break on a Chrome that reworded it; the manifest is the
+ * thing that actually knows, and reading it costs nothing. This is the same
+ * shape `ui/sidepanel/shell.js` uses for `options_ui`, for the same reason.
+ *
+ * @param {unknown} cause
+ * @returns {ReturnType<typeof makeError>} One of the closed four -- `unavailable`
+ *   for either missing precondition, `failed` for anything else.
+ */
+function refusal(cause) {
+  if (chrome.sidePanel === undefined) {
+    return makeError(
+      'unavailable',
+      'This build does not hold the sidePanel permission, so no panel can be opened from here.',
+      cause,
+    );
+  }
+  if (chrome.runtime.getManifest().side_panel === undefined) {
+    return makeError(
+      'unavailable',
+      'This build declares no side panel. The launcher works once a version declaring side_panel is installed.',
+      cause,
+    );
+  }
+  return makeError('failed', 'The side panel did not open. Try again.', cause);
+}
+
+/**
  * Open the side panel beside the tab that was active when this popup opened.
  *
  * **There is no `await` between the click and the call, and that is the whole
@@ -145,14 +213,33 @@ function showBanner(error) {
  * broken; it is known to depend on an unspecified property, which is a different
  * and worse thing to ship. This shape depends on nothing.
  *
- * **The caching is correct because of this surface's own lifecycle, not in spite
- * of it.** A popup closes on any outside click, so the tab that was active when
- * it opened is still the active tab when its one button is pressed; there is no
- * window in which the cached id can go stale. The property that makes a popup
- * useless for a flow is the property that makes this safe.
+ * **The caching is safe because of this surface's own lifecycle, not in spite of
+ * it.** A popup closes on any outside click, so **no interaction the user has
+ * with the page can change which tab is active while this popup is open**: the
+ * act of reaching another tab dismisses the document holding the cached id. That
+ * is the property that makes a popup useless for a flow, doing the one job it is
+ * good for.
  *
- * `failed` is the right word from the four: the user can act on it by clicking
- * again (AR-8, EXPERIENCE.md *Failure vocabulary*).
+ * The claim is about the *user*, and stating it more broadly would be false. A
+ * page script, another extension, or `chrome.tabs.update` elsewhere can still
+ * activate or close a different tab while the popup stands. The refusal path
+ * below is what covers that, and it is why the guard is not treated as a
+ * guarantee.
+ *
+ * **One call in flight at a time.** Two clicks before the first settles start two
+ * independent calls whose banners race: if the first fails and the second
+ * succeeds the error is silently cleared, and if the order reverses a failure
+ * banner stands over a panel that did open. The control carries `aria-disabled`
+ * while the call is out and keeps its label and its place in the tab order --
+ * never the native attribute (UX-DR17, EXPERIENCE.md). `ui/sidepanel/shell.js`
+ * guards the identical shape for the identical reason.
+ *
+ * **The call is wrapped, because it does not only reject.** Without the
+ * `sidePanel` permission `chrome.sidePanel` is not injected and
+ * `chrome.sidePanel.open` throws a `TypeError` *synchronously* -- which a
+ * two-argument `then` never sees, so the button would appear to do nothing at
+ * all. That arrangement is one skipped step of this Module's own copy procedure
+ * away.
  *
  * @returns {void}
  */
@@ -160,14 +247,31 @@ function openPanel() {
   const control = document.getElementById(CONTROL);
   // aria-disabled is the announced state and therefore the real one. Reading it
   // back rather than keeping a second flag is what stops the two drifting: a
-  // control that looks disabled and acts enabled is worse than either.
+  // control that looks disabled and acts enabled is worse than either, and it is
+  // what makes the in-flight guard and the not-yet-resolved guard one test.
   if (tabId === null || control === null || control.getAttribute('aria-disabled') === 'true') {
     return;
   }
   showBanner(null);
-  void chrome.sidePanel.open({ tabId }).then(
-    () => {},
-    (cause) => showBanner(makeError('failed', 'The side panel did not open. Try again.', cause)),
+  control.setAttribute('aria-disabled', 'true');
+  let opening;
+  try {
+    opening = chrome.sidePanel.open({ tabId });
+  } catch (cause) {
+    control.removeAttribute('aria-disabled');
+    showBanner(refusal(cause));
+    return;
+  }
+  void opening.then(
+    () => {
+      // Reached only when the panel opened and this document somehow outlived it.
+      // Restoring the control costs one line and leaves no state to explain.
+      control.removeAttribute('aria-disabled');
+    },
+    (cause) => {
+      control.removeAttribute('aria-disabled');
+      showBanner(refusal(cause));
+    },
   );
 }
 
@@ -178,13 +282,23 @@ function openPanel() {
  * wiring afterwards would leave a rendered, focusable button with no listener
  * for as long as the query takes -- a control that silently does nothing, which
  * is the failure shape this repository exists to stop. So the listener is
- * attached immediately and the button starts `aria-disabled`; the guard in
- * `openPanel` is what makes an early click a no-op the interface has already
- * explained rather than one it has not.
+ * attached immediately and the button starts `aria-disabled`.
  *
- * `unavailable` is the right word for a window with no page: nobody can act on
- * it right now, and the remedy is a different window rather than a retry
- * (AR-8). The control stays rendered and focusable so the reader can still see
+ * **What an early click gets, stated exactly.** The guard in `openPanel` swallows
+ * it, and what the interface has said by then is `aria-disabled` on the control
+ * and nothing else -- a screen reader announces it as unavailable, a sighted user
+ * sees it drawn as Secondary in `text-faint`. There is no sentence, because
+ * there is nothing yet to say: the query has not come back. The window is real
+ * and short, and it is measured (`?probe=slow` holds it open).
+ *
+ * **Both halves of "no tab could be resolved" report.** The query resolving to
+ * nothing usable is `unavailable` -- nobody can act on it, so UX-DR19 asks for
+ * the condition that would have to be true rather than an instruction. The query
+ * *rejecting* is `failed`: reopening the popup runs it again. A one-argument
+ * `then` here would leave the control disabled for ever with an empty banner and
+ * a console that dies with the document, which is the one outcome AC6 names.
+ *
+ * The control stays rendered and focusable throughout so the reader can still see
  * the code path that would run (UX-DR30).
  *
  * @returns {void}
@@ -194,19 +308,24 @@ function start() {
   if (control !== null) {
     control.addEventListener('click', openPanel);
   }
-  void activeTabId().then((id) => {
-    tabId = id;
-    if (id === null) {
-      showBanner(makeError(
-        'unavailable',
-        'This window has no page to open the panel beside. Open a tab and click the icon again.',
-      ));
-      return;
-    }
-    if (control !== null) {
-      control.removeAttribute('aria-disabled');
-    }
-  });
+  void activeTabId().then(
+    (id) => {
+      tabId = id;
+      if (id === null) {
+        showBanner(makeError(
+          'unavailable',
+          'No active tab was found in this window, so there is nothing to open the panel beside.',
+        ));
+        return;
+      }
+      if (control !== null) {
+        control.removeAttribute('aria-disabled');
+      }
+    },
+    (cause) => {
+      showBanner(makeError('failed', 'The active tab could not be resolved. Open the popup again.', cause));
+    },
+  );
 }
 
 start();

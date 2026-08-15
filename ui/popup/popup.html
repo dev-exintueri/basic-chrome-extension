@@ -26,12 +26,9 @@
   that CALLS the API (AR-D3), and that rule is the whole of what fixes this
   Module's floor at 116 and ui/sidepanel/'s at whatever the audit says.
 
-  The block above uses one ` * ` per line rather than a bare tag per line. The
-  carrier is the HTML comment, as DESIGN.md's carrier table says, but its lint
-  regex requires every tag line to begin with `*` or `<!--`, and a block of bare
-  lines matches NONE of the six tags. Story 1.10 shipped exactly that and it took
-  a code review to find, because nothing in the repository ran the documented
-  regex until the harness started reading it out of DESIGN.md.
+  The block above takes the ` * ` line prefix all three comment carriers take.
+  DESIGN.md's carrier table said "one tag per line" for .html until this story
+  amended it; the amendment's own commit carries what was measured.
 
   The token sheet is linked first so popup.css can override nothing and consume
   everything. Both stylesheets reach every value through var(--token, <literal>),
@@ -55,6 +52,13 @@ them.</p>
   lives on the container for that reason, not on the banner. It is styled through
   no :empty rule, so it needs no one-line form -- an empty div with no box of its
   own occupies nothing.
+
+  role="alert" and not "status", fixed rather than switched. UX-DR19 splits the
+  two by severity, and popup.js can produce only `unavailable` and `failed` --
+  both danger. popup.css maps those two and deliberately no others, so the role
+  and the stylesheet describe the same closed set. A live region cannot honestly
+  change its role after mount, so a surface that might announce a warning would
+  need a second container rather than a mutable one.
 -->
 <div id="banner" role="alert"></div>
 
