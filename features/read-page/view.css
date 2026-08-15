@@ -1,0 +1,217 @@
+/*
+ * @tier required
+ * @chrome-min baseline
+ * @permissions none
+ * @pitfall A var() inside a token fallback drops the whole declaration where no sheet exists.
+ * @alternative Relying on the shell's stylesheet -- it is anchored and cannot reach inside #views.
+ * @scales-to A second slice needs these rows -> promote the list to a shared ui/ stylesheet.
+ */
+
+/* The `read-page` view's stylesheet, loaded by `view.js` and scoped to its root.
+ *
+ * EVERY SELECTOR BEGINS AT `.m-read-page`, AND THAT IS THE WHOLE CONTRACT.
+ * AD-23 makes a slice's stylesheet load itself and confines it to the slice's own
+ * root, so two slices cannot collide inside one panel document and neither can
+ * bleed into a stranger's extension. There is no `:root` here, no `body`, no bare
+ * element selector and no `#id`: this file may style what this Module rendered
+ * and nothing else.
+ *
+ * IT CARRIES ITS OWN BUTTON AND ITS OWN FOCUS RING, AND THAT IS NOT DUPLICATION.
+ * `ui/sidepanel/shell.css` is anchored at landmarks -- `body > .panel-header`,
+ * `body > .module-nav`, `#banner`, `#views`, `#status`, `#dialog-root` -- so not
+ * one of its rules can match an element inside `#views`. Only inheritance from
+ * `body` crosses in. A view that leaned on the shell for a `.btn` or a `:focus`
+ * would look correct in this repository and render unstyled in the stranger's
+ * shell it was copied into, which is a wrong result with no error. The cost is
+ * that every view repeats these declarations, and that cost is the contract being
+ * honest (story 1.10 Q6).
+ *
+ * IT CARRIES THE VARIANTS IT USES AND NO OTHERS. There is one button here and it
+ * is Primary, so Ghost and Danger are absent. `[aria-disabled='true']` draws the
+ * Secondary appearance directly, which is what DESIGN.md specifies a disabled
+ * button of any variant looks like, so a `.secondary` rule would style nothing
+ * this Module renders. A rule that can never match is worse than a missing one:
+ * it reads as coverage.
+ *
+ * EVERY VALUE IS var(--token, <literal>). The literal is the DESIGN.md light-mode
+ * default, and it is required rather than tolerated (AD-25, AR-28): a slice
+ * copied without `ui/tokens.css` degrades to the right colours instead of to the
+ * host's. The typography fallbacks re-type the whole ~100-character font stack
+ * because a var() inside a fallback is unresolvable exactly where the fallback is
+ * needed, which invalidates the WHOLE declaration at computed-value time --
+ * measured in story 1.9 as 30px Georgia instead of 13px system-ui. Folding the
+ * stack back into var(--font-ui) reintroduces that defect.
+ *
+ * THERE IS NO @media, NO SHADOW AND NO MOTION. No breakpoint, because the panel
+ * reflows from 320px to 800px and has none; no colour-scheme block, because every
+ * theme-dependent value is a token declared once in `ui/tokens.css` and a second
+ * dark redefinition is a defect; one shadow exists in this system and it belongs
+ * to the dialog.
+ *
+ * THE ROOT DECLARES NO `display`. `[hidden] { display: none }` is a UA-origin
+ * rule and loses to any author `display` on the same element, silently -- which
+ * is the defect story 1.10 paid for on the module nav. Leaving `display`
+ * unspecified here is what keeps the shell's `hidden` toggle working, so adding
+ * one means adding `.m-read-page[hidden] { display: none }` in the same edit.
+ *
+ * THE TWO BANNER SLOTS ARE STYLED BY NOTHING, ON PURPOSE. `view.js` renders an
+ * empty `div.banner-warning` and an empty `div.banner-danger` from mount, because
+ * a live region inserted at the same moment as its text is frequently not
+ * announced at all. An empty div with no box of its own occupies nothing, so
+ * neither needs a rule; the box belongs to the `.banner` that lands inside one of
+ * them. Their classes name what they are for a reader and for the harness.
+ */
+
+.m-read-page {
+  padding: var(--space-3, 12px) 0;
+}
+
+/* 06 Banner -- label, then cause, then what would change it. Status colour is
+ * text and a 2px left border, never a filled block: a filled red rectangle in a
+ * 320px strip reads as a crash (UX-DR4, UX-DR19).
+ *
+ * ALL FOUR CODES ARE MAPPED, because `core/tabs.js` can return all four and an
+ * unmapped one would fall through to the neutral border -- colour would stop
+ * distinguishing them, silently. `shell.css` enumerates all four after finding
+ * exactly that. `degraded` is absent because it is not an error code and nothing
+ * here raises it. */
+.m-read-page .banner {
+  background: var(--surface-sunken, #F5F6F7);
+  border-left: 2px solid var(--text-muted, #5A636D);
+  border-radius: var(--radius, 4px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  margin: 0 var(--panel-gutter, 12px) var(--space-3, 12px);
+}
+
+.m-read-page .banner .label {
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+.m-read-page .banner.restricted,
+.m-read-page .banner.unknown {
+  border-left-color: var(--warning, #8A5300);
+}
+
+.m-read-page .banner.restricted .label,
+.m-read-page .banner.unknown .label {
+  color: var(--warning, #8A5300);
+}
+
+.m-read-page .banner.unavailable,
+.m-read-page .banner.failed {
+  border-left-color: var(--danger, #B3261E);
+}
+
+.m-read-page .banner.unavailable .label,
+.m-read-page .banner.failed .label {
+  color: var(--danger, #B3261E);
+}
+
+/* 04 Buttons -- 28px, one primary per region, and this region has exactly one
+ * control so the accent appears exactly once (UX-DR3, UX-DR17). */
+.m-read-page .actions {
+  margin: 0 var(--panel-gutter, 12px) var(--space-3, 12px);
+}
+
+.m-read-page .actions .btn {
+  box-sizing: border-box;
+  height: var(--control-height, 28px);
+  padding: 0 var(--space-3, 12px);
+  border: 1px solid transparent;
+  border-radius: var(--radius, 4px);
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  cursor: pointer;
+}
+
+.m-read-page .actions .btn.primary {
+  background: var(--accent, #1D4ED8);
+  color: var(--on-accent, #FFFFFF);
+}
+
+/* In flight the control carries `aria-disabled` and stays focusable, so the
+ * explanation stays reachable (UX-DR17, UX-DR33). It LOSES ITS FILL and is drawn
+ * as Secondary in text-faint, whatever variant it was: text-faint on accent is
+ * roughly 1.3:1 and unreadable, so fading a filled primary's label is not an
+ * option. On a restricted page the control is NOT disabled -- switching tabs and
+ * pressing it again is the remedy, and a disabled control would remove it. */
+.m-read-page .actions .btn[aria-disabled='true'] {
+  background: var(--surface, #FFFFFF);
+  color: var(--text-faint, #697079);
+  border-color: var(--border, #DCE0E5);
+  cursor: default;
+}
+
+/* 03 List row -- full-bleed to the panel gutters, --row-y around 13px text, which
+ * is roughly 28px and the minimum interactive target. Twelve rows fit a typical
+ * panel height without scrolling, which is the point: the whole result set should
+ * be apprehensible at a glance (UX-DR13, UX-DR16).
+ *
+ * The height is DERIVED and never declared. Declaring 28px here would fix the row
+ * against a font size the tokens own.
+ *
+ * ROWS ARE `<li>`, NOT `<button>`, AND THE 2px LEFT BORDER IS STILL HERE. This
+ * story ships one leaf, so a row has nothing to do when pressed and a button that
+ * does nothing is a worse accessibility outcome than a plain row; there is no
+ * hover rule and no `aria-current` rule for the same reason. The transparent left
+ * border stays because it sets the text's left edge at 14px, which is where every
+ * other list in this extension puts it -- two lists indented differently in one
+ * 320px panel is a visible inconsistency for no reason. It is measurable, not
+ * decorative. */
+.m-read-page .rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.m-read-page .row {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: center;
+  padding: var(--row-y, 6px) var(--panel-gutter, 12px);
+  border-left: 2px solid transparent;
+  border-radius: var(--radius-sm, 3px);
+  color: var(--text, #1B1F24);
+  font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+/* One line, truncated at the row's end, with the full value in `title`. */
+.m-read-page .row-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The trailing meta carries the heading's level -- one of the three things
+ * DESIGN.md permits here: an index, a count, a length. */
+.m-read-page .row-meta {
+  font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  color: var(--text-faint, #697079);
+}
+
+/* 14 Empty state -- one sentence, centred, no illustration, no icon, no heading.
+ * The same element carries "no results" after the action has run; the sentence is
+ * the difference and `view.js` holds which one it is (UX-DR27, UX-DR30). */
+.m-read-page .empty {
+  text-align: center;
+  color: var(--text-muted, #5A636D);
+  padding: var(--space-6, 24px) var(--space-4, 16px);
+  font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+.m-read-page .empty p {
+  margin: 0;
+}
+
+/* 15 Focus ring -- 2px accent, 1px offset, never removed and never conditional.
+ * `:focus` rather than `:focus-visible`: the heuristic hides the ring from a
+ * pointer user who is about to press a key, and a side panel is a keyboard
+ * surface as much as a pointer one (UX-DR28).
+ *
+ * Anchored at the view's root rather than at a region inside it, because that is
+ * exactly the scope AD-23 gives this file and it cannot go stale as the view
+ * grows a second focusable element. */
+.m-read-page :focus {
+  outline: 2px solid var(--accent, #1D4ED8);
+  outline-offset: 1px;
+}
