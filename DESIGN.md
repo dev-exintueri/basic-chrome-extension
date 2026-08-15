@@ -312,8 +312,10 @@ Write the condition as something a reader can *observe about their own project*,
 |---|---|
 | `.js` | `/** … */` JSDoc block, one ` * ` per line |
 | `.css` | `/* … */`, one ` * ` per line |
-| `.html` | `<!-- … -->`, one tag per line, immediately inside `<head>` |
+| `.html` | `<!-- … -->`, one ` * ` per line, immediately inside `<head>` |
 | `.json` | **Exempt** — JSON has no comments. The block lives on the `.js` file that consumes it; where no `.js` file consumes it, on the Module's `AGENTS.md` |
+
+**All three comment carriers take the same ` * ` line prefix, and the HTML one is not an exception.** This row read "one tag per line" until story 1.11, which is how it was written and how story 1.10 implemented it — `ui/sidepanel/shell.html` shipped six bare tag lines. Measured against the regex *Lint rules* prints, two files below: a block of bare lines matches **zero** of the six tags, so the Module carrying that block declares no permission and no floor, and its Manifest Fragment then fails L12 for declaring both. The rule was the defect, not the implementation, and the ` * ` the other two carriers already require is what the lint was always written to accept.
 
 A JSON asset cannot warn anyone, so its annotation is carried by whichever file reads it — and that is normally a `.js` file in the same Module, which is also where its pitfall belongs.
 

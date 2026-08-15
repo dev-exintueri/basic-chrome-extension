@@ -1,0 +1,189 @@
+/*
+ * @tier required
+ * @chrome-min baseline
+ * @permissions none
+ * @pitfall A var() inside a token fallback drops the whole declaration where no sheet exists.
+ * @alternative A width in pixels here -- DESIGN.md owns the constants and this one is borrowed.
+ * @scales-to A second popup-shaped surface appears -> promote this chrome to ui/chrome.css.
+ */
+
+/* The popup's own chrome, and nothing else.
+ *
+ * WHAT THIS FILE DOES NOT STYLE, AND WHY IT MATTERS. Every selector below begins
+ * at a landmark -- :root, body, body > .title, body > .summary, body > .action,
+ * body > .note, #banner -- and NONE of them is a bare component class. A rule
+ * like `.btn { ... }` here would style a Module's buttons IN THIS REPOSITORY
+ * ONLY, so a Module could ship with no button rules of its own, look correct
+ * here, and render unstyled the moment it is copied into a stranger's extension.
+ * This surface hosts no view, so that collision cannot actually happen HERE --
+ * the rule is followed anyway, because it is about what a Module is allowed to
+ * rely on and not about who its neighbours happen to be (AD-23, and shell.css's
+ * own @alternative on the same question).
+ *
+ * EVERY VALUE IS var(--token, <literal>). The literal is the light-mode default
+ * from DESIGN.md, and it is required rather than tolerated (AR-25, AR-28): a
+ * popup copied without ui/tokens.css degrades to the right colours instead of to
+ * the host's. The typography fallbacks re-type the whole ~100-character font
+ * stack because a var() inside a fallback is unresolvable exactly where the
+ * fallback is needed, which makes the WHOLE declaration invalid at
+ * computed-value time -- measured in story 1.9 as 30px Georgia instead of 13px
+ * system-ui. Folding the stack back into var(--font-ui) reintroduces that
+ * defect.
+ *
+ * THERE IS NO @media IN THIS FILE. No breakpoint, because a popup is one fixed
+ * width Chrome renders at whatever the content asks for; and no second
+ * colour-scheme block, because every theme-dependent value is a token declared
+ * once in ui/tokens.css (UX-DR2, AD-25).
+ */
+
+:root {
+  /* Chrome draws native controls, form widgets and scrollbars in light UA
+   * styling over a dark surface without this. It cannot live in ui/tokens.css:
+   * it is not a custom property and has no var() fallback, so a harvested slice
+   * could not carry it. Each composition root declares its own -- shell.css is
+   * the first, this is the second (story 1.9 AC14, Q10). */
+  color-scheme: light dark;
+}
+
+/* A POPUP HAS NO VIEWPORT OF ITS OWN. Chrome sizes the window to the document,
+ * so with no width the longest unbroken line decides how wide the popup is --
+ * silently, differently for every string, and differently again once a
+ * translation is longer. Fixing the width removes the question.
+ *
+ * The number is the SIDE PANEL's design floor, reached through its token so no
+ * constant is invented here. DESIGN.md Fixed Numbers owns the 320px panel floor,
+ * the 560px options column, and nothing for the popup; borrowing the panel's
+ * makes the launcher and the surface it opens the same width, which is the
+ * closest thing to a reason available. It is recorded as an open question rather
+ * than presented as a decision the document made. sample/ui.html draws its panel
+ * strip from the same token. */
+body {
+  box-sizing: border-box;
+  width: var(--panel-min-width, 320px);
+  margin: 0;
+  padding: var(--space-3, 12px) var(--panel-gutter, 12px);
+  background: var(--surface, #FFFFFF);
+  color: var(--text, #1B1F24);
+  font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+body > .title {
+  font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  margin: 0 0 var(--space-2, 8px);
+}
+
+/* type-body in text-muted: this is the sentence that names what the panel is
+ * for, and it is prose rather than a label. */
+body > .summary {
+  color: var(--text-muted, #5A636D);
+  margin: 0 0 var(--space-3, 12px);
+}
+
+/* 06 Banner -- the shell has one for the same reason: a state the user did not
+ * ask about, reported rather than thrown (UX-DR19, NFR-6). */
+#banner {
+  margin: 0;
+}
+
+#banner .banner {
+  background: var(--surface-sunken, #F5F6F7);
+  border-left: 2px solid var(--text-muted, #5A636D);
+  border-radius: var(--radius, 4px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  margin-bottom: var(--space-3, 12px);
+}
+
+#banner .banner .label {
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+/* Status colour is text and a 2px left border, never a filled block: a filled
+ * red rectangle in a 320px popup reads as a crash (UX-DR4).
+ *
+ * TWO CODES, NOT FOUR, AND THE ROLE IS WHY. popup.js can produce `unavailable`
+ * and `failed` and nothing else -- showBanner is private to that file and every
+ * call site is in it. Both are danger, which is what makes the fixed
+ * role="alert" on #banner in popup.html correct for everything this surface can
+ * say. Mapping `restricted` and `unknown` here as well would have been cheap
+ * futureproofing that quietly contradicts that role: UX-DR19 gives the two
+ * warning codes role="status", and a live region cannot honestly change its role
+ * after mount. So the stylesheet says exactly what the document can announce,
+ * and adding a third code means editing this file at the same time -- which is
+ * the point, because that is when the role has to be reconsidered too. */
+#banner .banner.unavailable {
+  border-left-color: var(--danger, #B3261E);
+}
+
+#banner .banner.unavailable .label {
+  color: var(--danger, #B3261E);
+}
+
+#banner .banner.failed {
+  border-left-color: var(--danger, #B3261E);
+}
+
+#banner .banner.failed .label {
+  color: var(--danger, #B3261E);
+}
+
+/* 04 Buttons -- the one control, anchored under its paragraph so the rule cannot
+ * reach a component class of the same name anywhere else. */
+body > .action {
+  margin: 0 0 var(--space-3, 12px);
+}
+
+body > .action .btn {
+  box-sizing: border-box;
+  height: var(--control-height, 28px);
+  padding: 0 var(--space-3, 12px);
+  border: 1px solid transparent;
+  border-radius: var(--radius, 4px);
+  font: var(--type-body-strong, 600 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  cursor: pointer;
+}
+
+body > .action .btn.primary {
+  background: var(--accent, #1D4ED8);
+  color: var(--on-accent, #FFFFFF);
+}
+
+/* Until the active tab resolves -- and permanently when there is none -- the
+ * control carries aria-disabled and stays focusable, so the explanation stays
+ * reachable (UX-DR17, UX-DR33). It LOSES ITS FILL and is drawn as Secondary in
+ * text-faint, whatever variant it was: text-faint on accent is roughly 1.3:1 and
+ * unreadable, so fading the label of a filled primary is not an option. */
+body > .action .btn[aria-disabled='true'] {
+  background: var(--surface, #FFFFFF);
+  color: var(--text-faint, #697079);
+  border-color: var(--border, #DCE0E5);
+  cursor: default;
+}
+
+/* type-meta in text-faint: the sentence that names the lifecycle. It is the
+ * whole reason this surface exists, and it is set as metadata rather than as
+ * prose because it describes the interface rather than speaking through it. */
+body > .note {
+  font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  color: var(--text-faint, #697079);
+  margin: 0;
+}
+
+/* 15 Focus ring -- 2px accent, 1px offset, never removed and never conditional.
+ * :focus rather than :focus-visible: the heuristic hides the ring from a pointer
+ * user who is about to press a key, and this surface has exactly one control, so
+ * a hidden ring means a keyboard user cannot see where they are at all
+ * (UX-DR28).
+ *
+ * Scoped to this file's own chrome for the same reason nothing else here is
+ * global. The cost is that every surface repeats these two declarations, and
+ * that cost is the AD-23 contract being honest.
+ *
+ * There is no `#banner :focus` companion. shell.css carries one; here showBanner
+ * appends a div, a span and a text node and nothing else, so the rule could never
+ * match. AC7 closes this file's selector surface in both directions precisely so
+ * a rule that measures nothing cannot sit inside an anchor that is otherwise in
+ * use, which is the coarse-grain shape of the story-1.9 defect. */
+body > .action :focus {
+  outline: 2px solid var(--accent, #1D4ED8);
+  outline-offset: 1px;
+}
