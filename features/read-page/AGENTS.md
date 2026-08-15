@@ -1,11 +1,11 @@
 # features/read-page
 
 ## What it does
-Lists the headings the active page actually renders, on a click and never before one. The panel calls
-`core/tabs.js`, which injects one Leaf Content Script under `activeTab` at the moment of the gesture;
-the leaf walks the document, returns plain data, and the view renders it as a list with the count in
-the status line. Nothing here touches the page on mount, on tab switch, or on navigation, and the
-extension holds no host permission of any kind.
+Lists the headings the active page actually renders, on a click and never before one, and scrolls the
+page to one when you activate its row. The panel calls `core/tabs.js`, which injects under
+`activeTab` at the moment of the gesture; the walk returns plain data, and the view renders it as a
+list with the count in the status line. Nothing here touches the page on mount, on tab switch, or on
+navigation, and the extension holds no host permission of any kind.
 
 ## Depends on
 core/errors.js, core/logger.js, core/messaging.js, core/panel.js, core/render.js, core/storage.js,
@@ -15,11 +15,17 @@ core/tabs.js
 
 1. Copy this directory to `features/read-page/` in the target extension.
 
-   What transfers with it is one instruction: **the leaf returns its failures as data, and the view
-   refuses any shape it does not recognise.** `collect-outline.js` and `view.js` carry the
+   What transfers with it is one instruction: **injected code returns its failures as data, and the
+   view refuses any shape it does not recognise.** `collect-outline.js` and `view.js` carry the
    measurement behind that rule and the reasoning for it; this step deliberately does not repeat
    them. One fact, one owner — a copy that restates judgement drifts from the original the first
    time either is edited.
+
+   **One of the two page operations is a file and the other is a function, and that is not a
+   preference.** `chrome.scripting.executeScript()` accepts `args` only alongside `func`; a `files`
+   injection takes no arguments at all. Reading the outline needs none, so it is a leaf file.
+   Scrolling to the heading you chose is parameterised by construction, so it cannot be one. It lives
+   in `view.js`, closes over nothing, and everything it needs arrives through `args`.
 
 2. Copy the Core Modules named under "Depends on" to `core/`.
 

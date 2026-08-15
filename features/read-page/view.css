@@ -155,14 +155,14 @@
  * The height is DERIVED and never declared. Declaring 28px here would fix the row
  * against a font size the tokens own.
  *
- * ROWS ARE `<li>`, NOT `<button>`, AND THE 2px LEFT BORDER IS STILL HERE. This
- * story ships one leaf, so a row has nothing to do when pressed and a button that
- * does nothing is a worse accessibility outcome than a plain row; there is no
- * hover rule and no `aria-current` rule for the same reason. The transparent left
- * border stays because it sets the text's left edge at 14px, which is where every
- * other list in this extension puts it -- two lists indented differently in one
- * 320px panel is a visible inconsistency for no reason. It is measurable, not
- * decorative. */
+ * ROWS ARE `<button>`s. Activating one scrolls the page to that heading, so the
+ * row is a control and is marked up as one -- keyboard operation is not an
+ * enhancement here, it is the NFR-7 floor. Selection is exclusive, carried as
+ * `aria-current="true"`, and drawn as accent-soft with a 2px accent left marker;
+ * the transparent border is on every row so selecting one moves no text.
+ *
+ * Hover is a background change and nothing else: no transform, no shadow, no
+ * motion. */
 .m-read-page .rows {
   list-style: none;
   margin: 0;
@@ -171,13 +171,27 @@
 
 .m-read-page .row {
   display: flex;
+  width: 100%;
   gap: var(--space-2, 8px);
   align-items: center;
   padding: var(--row-y, 6px) var(--panel-gutter, 12px);
+  background: none;
+  border: 0;
   border-left: 2px solid transparent;
   border-radius: var(--radius-sm, 3px);
   color: var(--text, #1B1F24);
   font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  text-align: left;
+  cursor: pointer;
+}
+
+.m-read-page .row:hover {
+  background: var(--surface-sunken, #F5F6F7);
+}
+
+.m-read-page .row[aria-current='true'] {
+  background: var(--accent-soft, #E8EEFC);
+  border-left-color: var(--accent, #1D4ED8);
 }
 
 /* One line, truncated at the row's end, with the full value in `title`. */

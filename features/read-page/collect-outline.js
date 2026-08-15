@@ -37,8 +37,15 @@
  *
  * THE TWO SHAPES IT CAN RETURN, AND NOTHING ELSE:
  *
- *   { ok: true,  headings: [ { level: 1..6, text: '...' }, ... ], skipped: n }
+ *   { ok: true,  headings: [ { level: 1..6, text: '...', at: n }, ... ], skipped: n }
  *   { ok: false, message: '...' }
+ *
+ * `at` is the heading's position among EVERY h1-h6 in the document, counted
+ * before the rendered filter runs. It is what lets the second operation scroll to
+ * this exact heading without re-deriving what "rendered" means: a predicate
+ * duplicated across two files is a predicate that will disagree with itself.
+ * `document.querySelectorAll('h1, h2, h3, h4, h5, h6')[at]` is the same element
+ * this walk saw, because both are document order over the same tree.
  *
  * `skipped` counts the subtrees this walk could not enter -- open shadow roots
  * and frames. It is not an error: the walk worked, and it worked on less than the
@@ -69,7 +76,7 @@
      * silently. */
     const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT);
 
-    /** @type {{ level: number, text: string }[]} */
+    /** @type {{ level: number, text: string, at: number }[]} */
     const headings = [];
 
     /* One Range, reused. `element.getClientRects()` is the obvious rendered test
@@ -81,6 +88,11 @@
     const box = document.createRange();
 
     let skipped = 0;
+
+    /* Every h1-h6 the walk passes, rendered or not. The rendered ones carry their
+     * position in THIS count, not their position in the result -- an index into a
+     * filtered list cannot be resolved again on the page. */
+    let seenHeadings = 0;
 
     /* Yielding is the whole point. `await` inside the loop hands the main thread
      * back to the page between chunks, so the page stays interactive while this
@@ -133,6 +145,7 @@
       if (!/^h[1-6]$/.test(element.localName)) {
         continue;
       }
+      seenHeadings += 1;
 
       /* THE PITFALL: a walk that does not ask what is rendered collects headings
        * the page never shows. No rectangles anywhere in the element's CONTENTS
@@ -172,7 +185,7 @@
         continue;
       }
 
-      headings.push({ level: Number(heading.localName.charAt(1)), text });
+      headings.push({ level: Number(heading.localName.charAt(1)), text, at: seenHeadings - 1 });
     }
 
     return { ok: true, headings, skipped };

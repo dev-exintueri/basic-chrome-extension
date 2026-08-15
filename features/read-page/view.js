@@ -4,14 +4,14 @@
  * @chrome-min baseline
  * @permissions none
  * @pitfall A leaf that threw arrives as a success carrying no data, byte for byte.
- * @alternative Injecting the leaf as a function -- the folder would stop being the copy unit.
+ * @alternative A second leaf FILE for the scroll -- executeScript takes no args with files.
  * @scales-to A page's outline passes a few hundred rows -> render it in slices, not one pass.
  */
 
 import { makeError, shown } from '../../core/errors.js';
 import { panelFor } from '../../core/panel.js';
 import { clear, el, list } from '../../core/render.js';
-import { runFile } from '../../core/tabs.js';
+import { runFile, runFunction } from '../../core/tabs.js';
 
 /**
  * The `read-page` view.
@@ -52,6 +52,52 @@ const MODULE = 'read-page';
  * that is what `chrome.scripting.executeScript({ files })` takes.
  */
 const LEAF = 'features/read-page/collect-outline.js';
+
+/**
+ * The second operation: scroll the page to one heading.
+ *
+ * **Why this is a function and not a file, which is the interesting part.**
+ * `chrome.scripting.executeScript()` accepts `args` **only** alongside `func` --
+ * a `files` injection takes no arguments at all. A parameterised page operation
+ * therefore cannot be a leaf file, and *scroll to the heading the user chose* is
+ * parameterised by construction. The alternatives are worse in ways that are not
+ * close: leaving the target in the isolated world between injections is the
+ * shared-world collision AD-5 exists to prevent, and reading it from storage is
+ * something the Surface Responsibility Model forbids a content script outright.
+ * `ARCHITECTURE-SPINE.md` sketches `features/find-text/scroll-to-match.js` as a
+ * file, and that Module will meet the same wall.
+ *
+ * It still obeys everything else a leaf obeys: one DOM operation, no state, plain
+ * data out, and it lives inside the folder that is the copy unit. It is
+ * **serialised and re-created inside the page**, so it closes over nothing -- not
+ * `MODULE`, not a token, not an import. Everything it needs arrives in `args`,
+ * which is why it takes a position rather than a heading.
+ *
+ * It returns its failure rather than throwing it, for the reason the leaf file
+ * carries: a function that throws is reported to the caller as a success with no
+ * data, byte for byte identical to one that returned nothing.
+ *
+ * `behavior` is left at its default. Smooth scrolling is animation, and the only
+ * animation this system permits is a state change becoming visible.
+ *
+ * @param {number} at The heading's position among every h1-h6 in the document.
+ * @returns {{ ok: true } | { ok: false, message: string }}
+ */
+function scrollToHeading(at) {
+  try {
+    const target = document.querySelectorAll('h1, h2, h3, h4, h5, h6')[at];
+    if (target === undefined) {
+      return { ok: false, message: 'That heading is no longer on the page. Read the page again.' };
+    }
+    target.scrollIntoView({ block: 'start' });
+    return { ok: true };
+  } catch (cause) {
+    return {
+      ok: false,
+      message: `The page could not be scrolled: ${cause instanceof Error ? cause.name : 'unknown error'}.`,
+    };
+  }
+}
 
 /**
  * The `id` the stylesheet `<link>` is found by.
@@ -162,6 +208,12 @@ export function mountReadPage(container) {
    * would inject twice into a world both leaves share. */
   let inFlight = false;
 
+  /** The selected row, or `-1`. Selection is exclusive within the list. */
+  let selected = -1;
+
+  /** The outline currently on screen, so a selection can re-render the list. */
+  let onScreen = /** @type {{ level: number, text: string, at: number }[]} */ ([]);
+
   /**
    * Show one banner, or none.
    *
@@ -228,11 +280,14 @@ export function mountReadPage(container) {
   /**
    * Render the outline.
    *
+   * Rows are `<button>`s, because activating one acts on the page (UX-DR16,
+   * UX-DR33, `DESIGN.md` *List row*). Selection is exclusive and carried as
+   * `aria-current="true"`, never `aria-selected`, which is invalid on a button
+   * and which screen readers ignore.
+   *
    * Keyed by index and not by text, because page headings repeat and `list()`
-   * rejects a duplicate key outright. The key is therefore positional and cannot
-   * be used to re-find a row across a re-render, which is what `list()` writes
-   * `data-key` for; nothing in this view needs to, because nothing here opens a
-   * dialog from a row.
+   * rejects a duplicate key outright. `list()` writes that key onto the row as
+   * `data-key`, which is how the selected row is re-found after a re-render.
    *
    * THE TRAILING META CARRIES THE HEADING'S LEVEL, AND DESIGN.md DOES NOT LIST
    * IT. That document closes the trailing meta at an index, a count or a length,
@@ -242,26 +297,77 @@ export function mountReadPage(container) {
    * is a departure and it is recorded as an open question rather than argued away.
    *
    * `title` is on the text and not on the row, because the text is what was
-   * truncated. A pointer user recovers the full heading by hovering it; a
-   * keyboard-only user cannot, because the row takes no focus and `title` needs
-   * hover -- which is the accessibility cost of a list with nothing to activate.
+   * truncated -- putting it on the row would put a tooltip over the meta too.
    *
-   * @param {{ level: number, text: string }[]} headings
+   * @param {{ level: number, text: string, at: number }[]} headings
    * @returns {void}
    */
   function showHeadings(headings) {
+    onScreen = headings;
     list(
       rows,
       headings,
       (_heading, index) => index,
-      (heading) =>
-        el('li', { class: 'row' }, [
-          el('span', { class: 'row-text', title: heading.text }, heading.text),
-          el('span', { class: 'row-meta' }, `h${heading.level}`),
+      (heading, index) =>
+        el('li', null, [
+          el(
+            'button',
+            {
+              type: 'button',
+              class: 'row',
+              'aria-current': index === selected ? 'true' : null,
+              onclick: () => select(index, heading.at),
+            },
+            [
+              el('span', { class: 'row-text', title: heading.text }, heading.text),
+              el('span', { class: 'row-meta' }, `h${heading.level}`),
+            ],
+          ),
         ]),
     );
     clear(results);
     results.append(rows);
+  }
+
+  /**
+   * Select a row and scroll the page to the heading it names.
+   *
+   * The selection is drawn **before** the injection resolves, because it is a
+   * fact about this list rather than about the page -- the user chose that row
+   * whatever the page does next. A refusal replaces it with a banner and leaves
+   * the row selected, so the remedy stays where the user is looking.
+   *
+   * `runFunction` and not `runFile`: see `scrollToHeading` above.
+   *
+   * @param {number} index The row's position in the rendered list.
+   * @param {number} at The heading's position among every h1-h6 on the page.
+   * @returns {void}
+   */
+  function select(index, at) {
+    if (inFlight) {
+      return;
+    }
+    inFlight = true;
+    selected = index;
+    showBanner(null);
+    showHeadings(onScreen);
+    void runFunction(scrollToHeading, [at]).then(
+      (result) => {
+        inFlight = false;
+        if (result.ok !== true) {
+          fail(result.error);
+          return;
+        }
+        const outcome = readScroll(result.data);
+        if (outcome !== null) {
+          fail(makeError('failed', outcome));
+        }
+      },
+      (cause) => {
+        inFlight = false;
+        fail(makeError('failed', 'The page could not be scrolled. Try again.', cause));
+      },
+    );
   }
 
   /**
@@ -276,14 +382,30 @@ export function mountReadPage(container) {
    */
   function fail(error) {
     showBanner(error);
+  }
+
+  /**
+   * Report a failure of the READ, which invalidates the outline as well.
+   *
+   * THE LIST GOES WITH THE COUNT. A refusal means no outline is known for the page
+   * in front of the user, and leaving the previous page's rows standing would
+   * present them as this page's -- the status line clears, so the surface would
+   * show twelve rows and assert nothing about them. Returning to the pre-action
+   * sentence is the only state that is true: nothing has been read here, and the
+   * control is still enabled so it can be.
+   *
+   * A failed **scroll** does not come through here. The outline is still a true
+   * answer about the page; only the one operation failed.
+   *
+   * @param {{ code: string, message: string }} error
+   * @returns {void}
+   */
+  function failRead(error) {
+    fail(error);
     panel.setStatus('');
-    /* THE LIST GOES WITH THE COUNT. A refusal means no outline is known for the
-     * page in front of the user, and leaving the previous page's rows standing
-     * would present them as this page's -- the status line clears, so the surface
-     * would show twelve rows and assert nothing about them. Returning to the
-     * pre-action sentence is the only state that is true: nothing has been read
-     * here, and the control is still enabled so it can be. */
     hasRun = false;
+    selected = -1;
+    onScreen = [];
     showSentence();
   }
 
@@ -302,7 +424,7 @@ export function mountReadPage(container) {
     control.removeAttribute('aria-disabled');
 
     if (result.ok !== true) {
-      fail(result.error);
+      failRead(result.error);
       return;
     }
 
@@ -314,7 +436,7 @@ export function mountReadPage(container) {
      * returns its own failures as data. */
     const outline = readOutline(result.data);
     if (outline === null) {
-      fail(
+      failRead(
         makeError(
           'failed',
           'The page returned nothing this view can read. Reload the page and try again.',
@@ -323,7 +445,7 @@ export function mountReadPage(container) {
       return;
     }
     if ('message' in outline) {
-      fail(makeError('failed', outline.message));
+      failRead(makeError('failed', outline.message));
       return;
     }
 
@@ -337,6 +459,7 @@ export function mountReadPage(container) {
         + 'The outline covers this page\'s own document only.',
     });
     hasRun = true;
+    selected = -1;
     if (outline.headings.length === 0) {
       showSentence();
     } else {
@@ -376,7 +499,7 @@ export function mountReadPage(container) {
     void runFile(LEAF).then(settle, (cause) => {
       inFlight = false;
       control.removeAttribute('aria-disabled');
-      fail(makeError('failed', 'The page could not be read. Try again.', cause));
+      failRead(makeError('failed', 'The page could not be read. Try again.', cause));
     });
   }
 
@@ -424,6 +547,29 @@ function loadStylesheet() {
 }
 
 /**
+ * Recognise what the scroll reported, and return the message if it failed.
+ *
+ * Distrustful for the same reason `readOutline` is: an injected function that
+ * threw arrives as `{ ok: true, data: undefined }`, which is what the first
+ * branch below is. `null` means it worked.
+ *
+ * @param {unknown} data The function's return value, as `core/tabs.js` returned it.
+ * @returns {string | null} The failure message, or `null` if the page scrolled.
+ */
+function readScroll(data) {
+  if (typeof data !== 'object' || data === null) {
+    return 'The page did not report whether it scrolled. Read the page again.';
+  }
+  const value = /** @type {Record<string, unknown>} */ (data);
+  if (value.ok === true) {
+    return null;
+  }
+  return typeof value.message === 'string' && value.message.trim() !== ''
+    ? value.message
+    : 'The page did not report whether it scrolled. Read the page again.';
+}
+
+/**
  * Recognise what the leaf returned, or refuse it.
  *
  * The leaf returns one of two shapes and this function accepts exactly those
@@ -437,7 +583,7 @@ function loadStylesheet() {
  * this repository exists to eliminate.
  *
  * @param {unknown} data The leaf's completion value, as `core/tabs.js` returned it.
- * @returns {{ headings: { level: number, text: string }[], skipped: number }
+ * @returns {{ headings: { level: number, text: string, at: number }[], skipped: number }
  *   | { message: string } | null}
  */
 function readOutline(data) {
@@ -463,7 +609,7 @@ function readOutline(data) {
     return null;
   }
 
-  /** @type {{ level: number, text: string }[]} */
+  /** @type {{ level: number, text: string, at: number }[]} */
   const headings = [];
   for (const entry of value.headings) {
     if (typeof entry !== 'object' || entry === null) {
@@ -479,7 +625,10 @@ function readOutline(data) {
     if (typeof row.text !== 'string' || row.text === '') {
       return null;
     }
-    headings.push({ level: row.level, text: row.text });
+    if (typeof row.at !== 'number' || !Number.isInteger(row.at) || row.at < 0) {
+      return null;
+    }
+    headings.push({ level: row.level, text: row.text, at: row.at });
   }
   return { headings, skipped: value.skipped };
 }
