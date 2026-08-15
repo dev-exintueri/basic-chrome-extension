@@ -59,9 +59,9 @@ core/tabs.js
    apart. Without **`scripting`** Chrome does not expose the namespace at all, so the first press
    comes back as an `Unavailable` banner reading *"Script injection is not available here"*. With
    `scripting` but without **`activeTab`** the call reaches Chrome and is refused, and the banner is
-   `Restricted` — *"This page has not granted access. Invoke the extension again on this page, then
-   try again."* Both are correct reports of a manifest that is missing something, and neither names
-   the line you have to add.
+   `Restricted` — *"This page has not granted access. Click this extension's toolbar icon on this
+   page, then try again."* Both are correct reports of a manifest that is missing something, and
+   neither names the line you have to add.
 
    **Nothing here declares a host permission, and nothing here should.** The point of this Module is
    that a useful page-reading capability needs none: access is granted by the user invoking the
