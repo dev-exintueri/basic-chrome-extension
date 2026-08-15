@@ -368,7 +368,7 @@ function wireSettings() {
  * The nav can only be built after mounting, because mounting is what creates the
  * sections it reads. The first mounted view becomes the active one; with none
  * mounted there is nothing to select and nothing to show, which is the state
- * this repository is in until story 1.12.
+ * this repository is in with no Module mounted.
  *
  * @returns {void}
  */

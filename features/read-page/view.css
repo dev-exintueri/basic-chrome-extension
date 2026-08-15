@@ -73,8 +73,12 @@
  * ALL FOUR CODES ARE MAPPED, because `core/tabs.js` can return all four and an
  * unmapped one would fall through to the neutral border -- colour would stop
  * distinguishing them, silently. `shell.css` enumerates all four after finding
- * exactly that. `degraded` is absent because it is not an error code and nothing
- * here raises it. */
+ * exactly that.
+ *
+ * `degraded` is the fifth, and it is not a failure code. It marks a documented
+ * limitation in force WHILE the feature works -- here, that the walk cannot enter
+ * a frame or a shadow root -- so it is raised by the view rather than by an error
+ * and it takes the warning colour (UX-DR29). */
 .m-read-page .banner {
   background: var(--surface-sunken, #F5F6F7);
   border-left: 2px solid var(--text-muted, #5A636D);
@@ -88,12 +92,14 @@
 }
 
 .m-read-page .banner.restricted,
-.m-read-page .banner.unknown {
+.m-read-page .banner.unknown,
+.m-read-page .banner.degraded {
   border-left-color: var(--warning, #8A5300);
 }
 
 .m-read-page .banner.restricted .label,
-.m-read-page .banner.unknown .label {
+.m-read-page .banner.unknown .label,
+.m-read-page .banner.degraded .label {
   color: var(--warning, #8A5300);
 }
 

@@ -3,9 +3,9 @@
  * @tier required
  * @chrome-min baseline
  * @permissions none
- * @pitfall An unfiltered walk collects headings inside elements the page never renders.
+ * @pitfall An unfiltered walk collects headings the page never renders. More: AGENTS.md
  * @alternative checkVisibility() -- it is Chrome 105 and would raise this leaf above baseline.
- * @scales-to Headings arrive after load -> a MutationObserver, which a leaf may not hold.
+ * @scales-to The outline must cover frames or shadow roots -> a leaf per frame under allFrames.
  */
 
 /*
@@ -37,13 +37,20 @@
  *
  * THE TWO SHAPES IT CAN RETURN, AND NOTHING ELSE:
  *
- *   { ok: true,  headings: [ { level: 1..6, text: '...' }, ... ] }
+ *   { ok: true,  headings: [ { level: 1..6, text: '...' }, ... ], skipped: n }
  *   { ok: false, message: '...' }
  *
- * Both are plain JSON. The value crosses a JSON boundary on its way back: a Map,
- * a Set, a Date and a DOM node all arrive as `{}` and a circular reference has
- * its cycle replaced by `null`, with nothing raised. A number and a string
- * survive, which is the whole reason a row carries `level` rather than its
+ * `skipped` counts the subtrees this walk could not enter -- open shadow roots
+ * and frames. It is not an error: the walk worked, and it worked on less than the
+ * whole page. The view raises a `degraded` banner when it is non-zero, because a
+ * documented limitation in force while the feature works is exactly what that
+ * label is for, and reporting `0 headings` for a page whose headings all live
+ * inside custom elements would be a confident wrong answer.
+ *
+ * Everything returned is plain JSON. The value crosses a JSON boundary on its way
+ * back: a Map, a Set, a Date and a DOM node all arrive as `{}` and a circular
+ * reference has its cycle replaced by `null`, with nothing raised. A number and a
+ * string survive, which is the whole reason a row carries `level` rather than its
  * element.
  */
 
@@ -57,11 +64,23 @@
      * The root is `documentElement` rather than `body`, because it is the one
      * element a document always has. A `<template>`'s content is not in this tree
      * at all, so the walker never reaches it -- stated because it is the case a
-     * reviewer looks for and does not find a line for. */
+     * reviewer looks for and does not find a line for. Shadow roots and frames
+     * are not in it either, and those are counted rather than passed over
+     * silently. */
     const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_ELEMENT);
 
     /** @type {{ level: number, text: string }[]} */
     const headings = [];
+
+    /* One Range, reused. `element.getClientRects()` is the obvious rendered test
+     * and it is wrong in one direction: an element with `display: contents`
+     * generates no box of its own while its text renders normally, so it reads as
+     * hidden. A Range over the element's CONTENTS has the rectangles its children
+     * actually occupy, which is `display: none` and `display: contents` answered
+     * by one question instead of two. */
+    const box = document.createRange();
+
+    let skipped = 0;
 
     /* Yielding is the whole point. `await` inside the loop hands the main thread
      * back to the page between chunks, so the page stays interactive while this
@@ -78,46 +97,85 @@
         await new Promise((resolve) => {
           setTimeout(resolve, 0);
         });
+
+        /* THE COST OF YIELDING, AND THE REASON THIS CHECK EXISTS. A TreeWalker
+         * computes its traversal live from the node it is parked on. Hand the
+         * main thread back and the page may remove the subtree that node is in --
+         * an infinite-scroll feed recycling its container, an ad slot swapping its
+         * DOM, a route change in a single-page application. On resume the
+         * ancestor chain no longer reaches the root, `nextNode()` returns `null`,
+         * and the loop ends NORMALLY with a short list that looks complete. That
+         * is a wrong result with no error, and at 2000 elements per chunk a
+         * multi-yield walk is the ordinary case rather than an edge. */
+        if (!node.isConnected) {
+          return {
+            ok: false,
+            message: 'The page changed while it was being read. Try again.',
+          };
+        }
       }
 
-      if (!/^H[1-6]$/.test(node.nodeName)) {
+      const element = /** @type {Element} */ (node);
+
+      /* What this walk cannot enter. `shadowRoot` is null for a closed root, so
+       * this undercounts rather than overcounts -- a closed root is invisible to
+       * every API a leaf has, and claiming otherwise would be worse than counting
+       * low. Frames need a separate injection, which is a permission decision and
+       * not a leaf's to make. */
+      if (element.shadowRoot !== null || element.localName === 'iframe' || element.localName === 'frame') {
+        skipped += 1;
+      }
+
+      /* `localName`, not `nodeName`. `nodeName` is upper-cased only for HTML
+       * elements in an HTML document; in a document served as
+       * `application/xhtml+xml` it is the qualified name as authored, so an
+       * upper-case test matches nothing and the outline comes back empty. */
+      if (!/^h[1-6]$/.test(element.localName)) {
         continue;
       }
 
-      const heading = /** @type {Element} */ (node);
-
-      /* THE PITFALL, AND WHY THE TEST IS TWO CLAUSES RATHER THAN ONE.
+      /* THE PITFALL: a walk that does not ask what is rendered collects headings
+       * the page never shows. No rectangles anywhere in the element's CONTENTS
+       * means no box anywhere in its ancestry -- and asking about the contents
+       * rather than about the element is what keeps `display: contents`, which
+       * generates no box of its own while its text renders, from reading as
+       * hidden.
        *
-       * `getComputedStyle(heading).display === 'none'` is the obvious test and it
-       * is wrong. For an element inside a `display: none` subtree the computed
-       * `display` is that element's OWN value -- `block` for a heading -- not
-       * `none`. The ancestor is where the box was lost and the descendant's
-       * computed style does not say so. `getClientRects()` does: an element that
-       * generates no box anywhere in its ancestry has no rectangles.
-       *
-       * That first clause misses `visibility: hidden`, which still generates a
-       * box. `visibility` is inherited, so the heading's own computed value
-       * already reports an ancestor's choice, and one property read closes it. */
-      if (heading.getClientRects().length === 0) {
-        continue;
-      }
-      if (getComputedStyle(heading).visibility !== 'visible') {
+       * THERE IS NO SEPARATE `visibility` CHECK, AND THERE WAS. It was deleted
+       * once `innerText` replaced `textContent` below, because a control proved
+       * it had stopped measuring anything: `innerText` is layout-aware and
+       * already excludes content whose computed `visibility` is not `visible`.
+       * The one case where the two differ -- a hidden heading holding a visible
+       * span -- the explicit check got WRONG, dropping text the page shows. A
+       * rule that measures nothing is worse than a missing one: it reads as
+       * coverage. */
+      box.selectNodeContents(element);
+      if (box.getClientRects().length === 0) {
         continue;
       }
 
-      /* Collapse runs of whitespace: markup indentation is not part of the
-       * heading, and a row rendering " Getting   started " carries a wrong value
-       * in its `title` as well as on screen. A heading whose text is only
-       * whitespace names nothing and is dropped. */
-      const text = (heading.textContent ?? '').replace(/\s+/g, ' ').trim();
+      /* `innerText`, not `textContent`. The two clauses above establish that this
+       * heading is RENDERED, and `textContent` then ignores rendering entirely:
+       * `<h2>Docs<span style="display:none">(draft)</span></h2>` reads back as
+       * text the page does not show, and it would go into the row's `title` too.
+       * `innerText` is layout-aware and says what is on screen.
+       *
+       * A heading whose rendered content is an image has no text at all, and
+       * dropping it would remove a heading this code has just established is
+       * rendered. Its accessible name is the next best answer and the page
+       * already wrote one. A heading with neither names nothing and is dropped. */
+      const heading = /** @type {HTMLElement} */ (element);
+      const text = (heading.innerText ?? heading.textContent ?? '').replace(/\s+/g, ' ').trim()
+        || (heading.getAttribute('aria-label') ?? '').trim()
+        || (heading.querySelector('img[alt]')?.getAttribute('alt') ?? '').trim();
       if (text === '') {
         continue;
       }
 
-      headings.push({ level: Number(heading.nodeName.charAt(1)), text });
+      headings.push({ level: Number(heading.localName.charAt(1)), text });
     }
 
-    return { ok: true, headings };
+    return { ok: true, headings, skipped };
   } catch (cause) {
     /* The message is what the caller shows, so it names what happened and what
      * would change it. The cause itself does not travel: it is page-side, it may

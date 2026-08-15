@@ -3,9 +3,9 @@
  * @tier required
  * @chrome-min baseline
  * @permissions none
- * @pitfall A full keyed re-render replaces every row, so focus inside the list is lost.
+ * @pitfall A leaf that threw arrives as a success carrying no data, byte for byte.
  * @alternative Injecting the leaf as a function -- the folder would stop being the copy unit.
- * @scales-to The view grows a second operation -> a second leaf, and rows that act on the page.
+ * @scales-to A page's outline passes a few hundred rows -> render it in slices, not one pass.
  */
 
 import { makeError, shown } from '../../core/errors.js';
@@ -76,6 +76,22 @@ const STYLE_ID = 'read-page-view-css';
  * role, present from mount, and never more than one of them populated.
  */
 const DANGER_CODES = ['unavailable', 'failed'];
+
+/**
+ * Every label this surface can show, and the reason there is a fifth.
+ *
+ * The first four are `core/errors.js`'s closed set. `degraded` is not a failure
+ * word: it marks a documented limitation in force **while the feature works**
+ * (UX-DR29), so it is raised by this view rather than by an error, and it takes
+ * the warning slot.
+ *
+ * This list exists to be checked. `core/tabs.js` types `error.code` as a plain
+ * `string`, so the closed set does not survive the boundary and no type checker
+ * can see a fifth code arrive. An unmapped code renders as a label nobody defined
+ * against a neutral border -- the Pitfall Register entry for exactly this -- and
+ * it renders *silently*, which is the half that matters.
+ */
+const NOTICE_CODES = ['unavailable', 'restricted', 'failed', 'unknown', 'degraded'];
 
 /**
  * Mount the view into the container the shell passes every Module.
@@ -159,12 +175,22 @@ export function mountReadPage(container) {
    *
    * @param {{ code: string, message: string } | null} error
    * @returns {void}
+   * @throws {TypeError} If `code` is not one this surface maps.
    */
   function showBanner(error) {
     clear(warningSlot);
     clear(dangerSlot);
     if (error === null) {
       return;
+    }
+    /* A code outside the mapped set is a defect in this file, not a runtime
+     * state, and `core/errors.js` takes the same line -- `makeError` throws on a
+     * code outside its four rather than letting one reach a banner. Refusing it
+     * here is louder than rendering it in the wrong region with no colour. */
+    if (!NOTICE_CODES.includes(error.code)) {
+      throw new TypeError(
+        `showBanner() cannot render the code ${shown(error.code)}; view.css maps ${NOTICE_CODES.join(', ')}.`,
+      );
     }
     const slot = DANGER_CODES.includes(error.code) ? dangerSlot : warningSlot;
     slot.append(
@@ -203,9 +229,22 @@ export function mountReadPage(container) {
    * Render the outline.
    *
    * Keyed by index and not by text, because page headings repeat and `list()`
-   * rejects a duplicate key outright. The trailing meta carries the heading's
-   * level, which is one of the three things DESIGN.md permits there -- an index,
-   * a count, a length -- read as the depth this row sits at.
+   * rejects a duplicate key outright. The key is therefore positional and cannot
+   * be used to re-find a row across a re-render, which is what `list()` writes
+   * `data-key` for; nothing in this view needs to, because nothing here opens a
+   * dialog from a row.
+   *
+   * THE TRAILING META CARRIES THE HEADING'S LEVEL, AND DESIGN.md DOES NOT LIST
+   * IT. That document closes the trailing meta at an index, a count or a length,
+   * and a level is a fourth kind -- a classification. It is here because an
+   * outline without depth is a flat list of sentences, and the alternative on the
+   * permitted list, an index, repeats what the row's position already says. This
+   * is a departure and it is recorded as an open question rather than argued away.
+   *
+   * `title` is on the text and not on the row, because the text is what was
+   * truncated. A pointer user recovers the full heading by hovering it; a
+   * keyboard-only user cannot, because the row takes no focus and `title` needs
+   * hover -- which is the accessibility cost of a list with nothing to activate.
    *
    * @param {{ level: number, text: string }[]} headings
    * @returns {void}
@@ -216,8 +255,8 @@ export function mountReadPage(container) {
       headings,
       (_heading, index) => index,
       (heading) =>
-        el('li', { class: 'row', title: heading.text }, [
-          el('span', { class: 'row-text' }, heading.text),
+        el('li', { class: 'row' }, [
+          el('span', { class: 'row-text', title: heading.text }, heading.text),
           el('span', { class: 'row-meta' }, `h${heading.level}`),
         ]),
     );
@@ -238,6 +277,14 @@ export function mountReadPage(container) {
   function fail(error) {
     showBanner(error);
     panel.setStatus('');
+    /* THE LIST GOES WITH THE COUNT. A refusal means no outline is known for the
+     * page in front of the user, and leaving the previous page's rows standing
+     * would present them as this page's -- the status line clears, so the surface
+     * would show twelve rows and assert nothing about them. Returning to the
+     * pre-action sentence is the only state that is true: nothing has been read
+     * here, and the control is still enabled so it can be. */
+    hasRun = false;
+    showSentence();
   }
 
   /**
@@ -280,7 +327,15 @@ export function mountReadPage(container) {
       return;
     }
 
-    showBanner(null);
+    /* A limitation, not a failure: the walk ran and it ran on less than the whole
+     * page. Reporting `0 headings` for a document whose headings all live inside
+     * custom elements or a frame would be a confident wrong answer, and UX-DR29
+     * says this label is never suppressed for being inconvenient. */
+    showBanner(outline.skipped === 0 ? null : {
+      code: 'degraded',
+      message: 'Headings inside frames and shadow DOM are not read. '
+        + 'The outline covers this page\'s own document only.',
+    });
     hasRun = true;
     if (outline.headings.length === 0) {
       showSentence();
@@ -301,6 +356,11 @@ export function mountReadPage(container) {
     if (inFlight) {
       return;
     }
+    /* `setStatus`, and never `flashStatus`, anywhere in this file. UX-DR26 flashes
+     * a completed outcome for three seconds and then reverts to the count -- and
+     * here the outcome IS the count, so the flash would show the same words twice.
+     * The success is visible in the list as well, so it is not the otherwise-
+     * invisible kind that rule exists for. */
     inFlight = true;
     showBanner(null);
     /* `aria-disabled`, never the native attribute, which would take the control
@@ -343,8 +403,10 @@ export function mountReadPage(container) {
  * AD-23: the sheet travels with the folder, so `view.js` loads it rather than the
  * shell linking it -- which is what keeps the shell's edit at two lines. The
  * `href` is resolved from this file's own URL rather than through
- * `chrome.runtime.getURL`, so nothing here touches `chrome.*` and the block's
- * `none` stays true.
+ * `chrome.runtime.getURL`. Not because that would cost a permission -- it costs
+ * none, and the block's `none` would hold either way -- but because the sheet
+ * sits beside this file and `import.meta.url` says so without naming an
+ * extension API a copied slice would then depend on.
  *
  * @returns {void}
  */
@@ -375,7 +437,8 @@ function loadStylesheet() {
  * this repository exists to eliminate.
  *
  * @param {unknown} data The leaf's completion value, as `core/tabs.js` returned it.
- * @returns {{ headings: { level: number, text: string }[] } | { message: string } | null}
+ * @returns {{ headings: { level: number, text: string }[], skipped: number }
+ *   | { message: string } | null}
  */
 function readOutline(data) {
   if (typeof data !== 'object' || data === null) {
@@ -384,11 +447,19 @@ function readOutline(data) {
   const value = /** @type {Record<string, unknown>} */ (data);
 
   if (value.ok === false) {
-    return typeof value.message === 'string' && value.message !== ''
+    /* `.trim()`, not `!== ''`. `makeError` rejects a blank message, and a message
+     * of spaces would pass a bare emptiness test, reach `makeError` inside the
+     * fulfilment handler, and throw there -- where the sibling rejection handler
+     * cannot catch it. The visible result would be an unhandled rejection, no
+     * banner, and the status line frozen on the in-flight verb. */
+    return typeof value.message === 'string' && value.message.trim() !== ''
       ? { message: value.message }
       : null;
   }
   if (value.ok !== true || !Array.isArray(value.headings)) {
+    return null;
+  }
+  if (typeof value.skipped !== 'number' || !Number.isInteger(value.skipped) || value.skipped < 0) {
     return null;
   }
 
@@ -402,10 +473,13 @@ function readOutline(data) {
     if (typeof row.level !== 'number' || !Number.isInteger(row.level)) {
       return null;
     }
+    if (row.level < 1 || row.level > 6) {
+      return null;
+    }
     if (typeof row.text !== 'string' || row.text === '') {
       return null;
     }
     headings.push({ level: row.level, text: row.text });
   }
-  return { headings };
+  return { headings, skipped: value.skipped };
 }

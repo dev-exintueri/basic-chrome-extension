@@ -15,13 +15,11 @@ core/tabs.js
 
 1. Copy this directory to `features/read-page/` in the target extension.
 
-   What transfers with it is one instruction: **the leaf returns its failures as data.** A leaf that
-   throws is reported to the caller as a *success* — `chrome.scripting.executeScript()` resolves, and
-   the injection result for a leaf that threw is byte for byte what a leaf returning `undefined`
-   produces, with no error property to tell them apart. `collect-outline.js` therefore wraps its whole
-   body in one `try` and returns the failure; `view.js` refuses any other shape and reports it. Both
-   files carry the measurement behind that; this step deliberately does not repeat it. One fact, one
-   owner.
+   What transfers with it is one instruction: **the leaf returns its failures as data, and the view
+   refuses any shape it does not recognise.** `collect-outline.js` and `view.js` carry the
+   measurement behind that rule and the reasoning for it; this step deliberately does not repeat
+   them. One fact, one owner — a copy that restates judgement drifts from the original the first
+   time either is edited.
 
 2. Copy the Core Modules named under "Depends on" to `core/`.
 
@@ -49,10 +47,15 @@ core/tabs.js
 
    **So this fragment does not, on its own, give you a page you can read.** The injection needs
    `activeTab` and `scripting`, and they arrive with `core/tabs.js`, whose own fragment travels in
-   `core/AGENTS.md`. Merge that too. Without those two permissions the extension loads, the view
-   mounts, the control works, and every press comes back as a `restricted` banner reading *"This page
-   has not granted access"* — a correct report of a manifest that is missing something, which is not
-   the same as a message telling you which line to add.
+   `core/AGENTS.md`. Merge that too.
+
+   Both omissions are reported, and they are reported differently, which is how you tell them
+   apart. Without **`scripting`** Chrome does not expose the namespace at all, so the first press
+   comes back as an `Unavailable` banner reading *"Script injection is not available here"*. With
+   `scripting` but without **`activeTab`** the call reaches Chrome and is refused, and the banner is
+   `Restricted` — *"This page has not granted access. Invoke the extension again on this page, then
+   try again."* Both are correct reports of a manifest that is missing something, and neither names
+   the line you have to add.
 
    **Nothing here declares a host permission, and nothing here should.** The point of this Module is
    that a useful page-reading capability needs none: access is granted by the user invoking the
@@ -97,3 +100,22 @@ core/tabs.js
    the extension unpacked, click the toolbar icon, open the panel, press the control on an ordinary
    page and see the list; then do the same on a `chrome://` page and see the `restricted` banner with
    the control still enabled.
+
+## Notes
+
+`collect-outline.js` performs one operation with two silent failure modes, and its Annotation Block
+has room for the one the Pitfall Register already names. This is the other one, continued here
+rather than restated.
+
+**A walk that yields can be truncated by the page, and the truncation looks like a complete
+answer.** A `TreeWalker` computes its traversal live from the node it is parked on. The walk hands
+the main thread back every 2000 elements so the page stays responsive, and in that window the page
+may remove the subtree the walker is inside — an infinite-scroll feed recycling its container, an ad
+slot swapping its DOM, a route change in a single-page application. On resume the ancestor chain no
+longer reaches the root, `nextNode()` returns `null`, and the loop ends normally with a short list.
+
+Nothing is raised, and a short outline is indistinguishable from a short page. The leaf therefore
+checks that the node it is parked on is still connected after every yield, and reports
+`The page changed while it was being read.` rather than returning what it has. If you replace the
+yield, keep the check: they are one mechanism, and the interruptibility that makes the page
+responsive is the same interruptibility that costs correctness here.
