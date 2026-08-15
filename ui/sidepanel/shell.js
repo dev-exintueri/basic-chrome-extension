@@ -10,6 +10,7 @@
 
 import { el, clear } from '../../core/render.js';
 import { makeError } from '../../core/errors.js';
+import { mountReadPage } from '../../features/read-page/view.js';
 
 /**
  * The side panel's composition root.
@@ -50,19 +51,23 @@ import { makeError } from '../../core/errors.js';
  * whatever it was given. An API object passed in instead would be infrastructure
  * a copied slice cannot see.
  *
- * No Feature Module exists yet -- `features/read-page/` is story 1.12 -- so this
- * function is empty, and that is the correct output rather than a stub. The edit
- * a Module adds is always these two lines:
+ * One Module is mounted, and the two lines below are the whole of what mounting
+ * one costs. Both are stated verbatim in `features/read-page/AGENTS.md` step 4 --
+ * an `import` at the top of this file and one call in here -- so an agent applies
+ * them without inference and removes the Module by deleting the same text. A
+ * second Module adds a second pair and nothing else; the nav, the switching and
+ * the scroll map below all derive from what the mounting produced.
  *
- * ```js
- * import { mountReadPage } from '../../features/read-page/view.js';   // at the top
- * mountReadPage(document.querySelector('#views'));                    // in here
- * ```
+ * Nothing here catches. A `mount` that throws takes this whole file down with it,
+ * and that is deliberate: it is a defect in a hand-edited line, not a runtime
+ * state, and `core/render.js` and `core/panel.js` both throw on the same class of
+ * mistake. The obligation is the Module's -- `mountReadPage` throws only for a
+ * container that is not an element, and reports everything else.
  *
  * @returns {void}
  */
 function mountViews() {
-  // Intentionally empty. See above: the first Module lands here in story 1.12.
+  mountReadPage(document.querySelector('#views'));
 }
 
 /**
@@ -363,7 +368,7 @@ function wireSettings() {
  * The nav can only be built after mounting, because mounting is what creates the
  * sections it reads. The first mounted view becomes the active one; with none
  * mounted there is nothing to select and nothing to show, which is the state
- * this repository is in until story 1.12.
+ * this repository is in with no Module mounted.
  *
  * @returns {void}
  */

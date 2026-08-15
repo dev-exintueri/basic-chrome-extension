@@ -116,8 +116,28 @@ const CHROME_PAGE =
   'Chrome pages cannot be read by extensions. Open a normal page and try again.';
 const WEB_STORE =
   'The Chrome Web Store cannot be read by extensions. Open a normal page and try again.';
+/**
+ * The remedy names the gesture, because *invoke* is the API's word and not the
+ * reader's.
+ *
+ * This is the message a person meets most often, and it was measured meeting
+ * them: story 1.12's hand check found that a side panel is a **window** surface
+ * while the grant is a **tab** one, so a user who opens the panel once and then
+ * browses is refused on nearly every page. The remedy is one toolbar click on
+ * the page in question -- and the previous wording, *"Invoke the extension again
+ * on this page"*, stated it in vocabulary that only someone who had read the
+ * `activeTab` documentation could act on.
+ *
+ * It names the toolbar icon and not all four granting gestures. `activeTab` is
+ * also granted by a context-menu item, a `commands` shortcut and an omnibox
+ * suggestion -- the head documentation above keeps that list -- but DESIGN.md
+ * requires the third part of a banner to be **the action**, and only one of the
+ * four is an action every extension holding this module can be assumed to offer.
+ * A consumer whose extension grants some other way has changed the surface and
+ * will change this line with it.
+ */
 const NOT_GRANTED =
-  'This page has not granted access. Invoke the extension again on this page, then try again.';
+  "This page has not granted access. Click this extension's toolbar icon on this page, then try again.";
 const TAB_GONE =
   'The page closed or navigated before the extension could reach it. Open a page and try again.';
 const NO_SCRIPTING =
