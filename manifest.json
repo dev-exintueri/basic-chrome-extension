@@ -5,6 +5,9 @@
   "description": "A Manifest V3 reference extension whose Modules are built to be lifted out one folder at a time.",
   "minimum_chrome_version": "116",
   "permissions": ["storage", "activeTab", "scripting", "sidePanel"],
+  "action": {
+    "default_popup": "ui/popup/popup.html"
+  },
   "side_panel": {
     "default_path": "ui/sidepanel/shell.html"
   },

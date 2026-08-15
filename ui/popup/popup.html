@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--
+ * @tier required
+ * @chrome-min baseline
+ * @permissions none
+ * @pitfall Chrome sizes a popup to its content, so with no width the longest line sets it.
+ * @alternative A popup that hosts a flow -- every click into the page would close it mid-task.
+ * @scales-to The launcher needs a second control -> it belongs in the panel, not in here.
+ -->
+<meta charset="utf-8">
+<title>basic-chrome-extension</title>
+
+<!--
+  The toolbar popup, and the whole of this repository's argument for the side
+  panel. It opens the panel and says why it is not the panel; it hosts no flow
+  and it never will (DESIGN.md, Surface Responsibility Model: the Popup owns "a
+  minimal launcher demonstration" and must not "host any main flow").
+
+  THE DOCUMENT DECLARES NO FLOOR AND NO PERMISSION. Its tags are baseline and
+  none, because action.default_popup is a BASE MANIFEST KEY -- it belongs to the
+  repository the way background.service_worker does, no fragment declares it, and
+  it costs nothing. Everything that costs anything is in popup.js, which is the
+  file that calls chrome.sidePanel.open(): a permission is declared by the file
+  that CALLS the API (AR-D3), and that rule is the whole of what fixes this
+  Module's floor at 116 and ui/sidepanel/'s at whatever the audit says.
+
+  The block above uses one ` * ` per line rather than a bare tag per line. The
+  carrier is the HTML comment, as DESIGN.md's carrier table says, but its lint
+  regex requires every tag line to begin with `*` or `<!--`, and a block of bare
+  lines matches NONE of the six tags. Story 1.10 shipped exactly that and it took
+  a code review to find, because nothing in the repository ran the documented
+  regex until the harness started reading it out of DESIGN.md.
+
+  The token sheet is linked first so popup.css can override nothing and consume
+  everything. Both stylesheets reach every value through var(--token, <literal>),
+  so this document copied without ui/tokens.css still renders at this
+  repository's light-mode defaults instead of unstyled (AD-25).
+-->
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="popup.css">
+<script type="module" src="popup.js"></script>
+</head>
+
+<body>
+<h1 class="title">basic-chrome-extension</h1>
+
+<p class="summary">Every flow in this extension lives in the side panel. This popup hosts none of
+them.</p>
+
+<!--
+  Present from mount and populated on change: a live region inserted at the same
+  moment as its text is frequently not announced at all (EXPERIENCE.md). The role
+  lives on the container for that reason, not on the banner. It is styled through
+  no :empty rule, so it needs no one-line form -- an empty div with no box of its
+  own occupies nothing.
+-->
+<div id="banner" role="alert"></div>
+
+<!--
+  One control, and it starts aria-disabled because popup.js has not resolved the
+  active tab yet. That is aria-disabled rather than the native attribute, so it
+  keeps its place in the tab order and its explanation stays reachable (UX-DR17,
+  UX-DR33). A button wired later instead would be a control that silently does
+  nothing for the first few milliseconds, which is the failure shape this
+  repository exists to stop.
+-->
+<p class="action">
+  <button type="button" class="btn primary" id="open-panel" aria-disabled="true">Open side panel</button>
+</p>
+
+<p class="note">A popup closes the moment you click into the page, which breaks the
+produce-a-list-then-act-on-the-page loop every capability here is shaped like. That is why the panel
+is the primary surface.</p>
+</body>
+</html>
