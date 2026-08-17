@@ -83,13 +83,25 @@
  * That file does not exist yet and no story owns it; Epic 3 nominally does.
  */
 
-import { keys } from './config.schema.js';
+import { keys, migrations, version } from './config.schema.js';
 import { makeError, shown } from './errors.js';
 import { get as readArea, set as writeArea, subscribe as watchArea } from './storage.js';
 
 /** @typedef {import('./config.schema.js').ConfigKey} ConfigKey */
 /** @typedef {import('./storage.js').Result} Result */
 /** @typedef {keyof typeof keys} Name */
+
+/**
+ * The `onInstalled` event's own argument.
+ *
+ * Derived from Chrome's declaration rather than restated: `chrome-types` gives
+ * the details an anonymous inline type, so it is reached through the listener's
+ * parameter list. Copying the shape would put a second copy of somebody else's
+ * closed vocabulary here, and `reason` is exactly the part that must not drift.
+ * This is a type position only -- nothing in this file calls a `chrome.*` API.
+ *
+ * @typedef {Parameters<Parameters<typeof chrome.runtime.onInstalled.addListener>[0]>[0]} InstalledDetails
+ */
 
 /**
  * The type one declared key resolves to.
@@ -128,6 +140,35 @@ const SYNC_DEBOUNCE_MS = 750;
  * machine with no policy, where it reads as empty rather than as a failure.
  */
 const POLICY_AREA = 'managed';
+
+/**
+ * Where the store records which schema version its values are shaped for.
+ *
+ * **It is deliberately not a `cfg:` key and not an entry in `keys`.** Every
+ * entry in `keys` becomes a field in the generated options form, and a version
+ * is not a setting a user has an opinion about. `core` is an owner
+ * `core/storage.js`'s grammar names explicitly, and `core/logger.js` already
+ * owns `log:ring` by the same pattern. Story 2.1's Q11 raised this with three
+ * candidates; the other two were a reserved `cfg:` name -- and there is no
+ * reserved space inside `cfg:`, because 2.1 measured the schema's own name
+ * grammar and `core/storage.js`'s `KEY_PATTERN` to be exactly total against each
+ * other -- and a fifth per-key field, which 2.1's own acceptance criteria forbid.
+ */
+const VERSION_KEY = 'core:schema-version';
+
+/**
+ * **`local`, and this is the load-bearing half of the decision.**
+ *
+ * A synced version tells a second machine that migrations it has never run are
+ * already done. Its values stay at the old shape, the version says otherwise,
+ * and every later read answers from a shape nothing will fix -- a wrong answer
+ * with nothing raised. A version describes the state of one store, and `local`
+ * is the only area whose scope is one store.
+ */
+const VERSION_AREA = 'local';
+
+/** A store nobody has written is at version 0, which is what a fresh install is. */
+const FRESH = 0;
 
 /** Only `sync` carries a write-rate limit, so only `sync` is debounced. */
 const DEBOUNCED_AREA = 'sync';
@@ -472,4 +513,113 @@ export function subscribe(name, fn) {
     stopPolicy();
     stopUser();
   };
+}
+
+/**
+ * Read the version the store's values are shaped for.
+ *
+ * Absent means `FRESH`, because a store nobody has written and a store that has
+ * run every migration are the same arithmetic rather than two cases -- the
+ * schema says so where it declares `version`. Anything else that is not a whole
+ * number in `[0, current]` is a store this code does not understand: not a
+ * failure to report, but not a starting point either.
+ *
+ * @returns {Promise<number | null>} The version, or `null` if it is unusable.
+ */
+function storedVersion() {
+  return readArea(VERSION_AREA, VERSION_KEY).then((result) => {
+    if (!result.ok) return null;
+    if (!('data' in result) || result.data === undefined) return FRESH;
+    return typeof result.data === 'number' ? result.data : null;
+  });
+}
+
+/**
+ * Bring the store's values up to the schema's `version`.
+ *
+ * Wired to `chrome.runtime.onInstalled` in `sw.js`, which is the only caller.
+ * Two lines there, no state here: the worker is terminated after roughly 30 s
+ * idle, so an interrupted run has to be resumable from what is in storage and
+ * from nothing else.
+ *
+ * **Only `update` runs anything.** `install` has nothing to migrate -- a fresh
+ * store is at `FRESH` by absence, and stamping it would buy nothing.
+ * `chrome_update` and `shared_module_update` do not change this extension's
+ * stored shapes, and re-running a migration on them would be a second
+ * application of a function only documented to be safe under one.
+ *
+ * **`details.previousVersion` is not the previous schema version.** It is the
+ * extension's previous `manifest.json` semver, a different number with a
+ * different owner, and starting from it would migrate from `'1.0.0'` to a step
+ * count. The starting point comes from `VERSION_KEY` and from nowhere else.
+ *
+ * **The version is raised once per step, after that step's writes have landed.**
+ * A run interrupted between two steps therefore resumes at the step it did not
+ * finish rather than skipping it, and a write that fails stops the run and
+ * leaves the version alone so the next update event retries. Both of those mean
+ * a migration can be applied to its own output, which is why `Migration`
+ * requires each function to be idempotent -- a requirement nothing can check,
+ * because the functions do not exist yet.
+ *
+ * **A key a migration names but the store does not hold is skipped.** Applying a
+ * function to an absent value invents one: the schema's own worked example,
+ * `v => v + 1`, turns `undefined` into `NaN`, which is a `number` no declared
+ * type admits and which would then resolve to the declared default forever.
+ *
+ * **Nothing escapes.** A migration that throws, or a storage failure, ends the
+ * run quietly. This file cannot log -- `core/logger.js` imports it, and closing
+ * that cycle resolves one side to a partially initialised namespace -- and an
+ * unhandled rejection inside a service worker is reported nowhere a maintainer
+ * will look. The consequence is stated rather than hidden: **a migration that
+ * fails leaves the store un-migrated with no announcement**, and the only reason
+ * that is survivable is that every read is gated by the declared type, so an
+ * un-migrated value of the wrong type resolves to its default.
+ *
+ * **What the read-time gate does not cover.** It catches a migration that
+ * changes a value's *type*. A unit, a format, or a meaning changing within
+ * `boolean` or `string` passes it and is returned as the answer. That half is
+ * undefended and belongs to whoever writes the first migration.
+ *
+ * @param {InstalledDetails} [details] The event's own argument.
+ * @returns {Promise<void>} Settles when the run is over. Never rejects.
+ */
+export async function migrate(details) {
+  if (details === undefined || details.reason !== 'update') return;
+
+  const current = version;
+  const stored = await storedVersion();
+  if (stored === null || stored < FRESH || stored > current) return;
+
+  // There is deliberately no `stored === current` early return. The loop's own
+  // bounds already run zero steps in that case, and a branch that cannot change
+  // an outcome reads as load-bearing to the next person -- the gate proved this
+  // one was not by mutating it away and watching nothing move.
+  for (let step = stored + 1; step <= current; step += 1) {
+    const migration = migrations[step - 1];
+    if (migration === undefined) return;
+
+    for (const name of Object.keys(migration)) {
+      const entry = /** @type {Readonly<Record<string, ConfigKey | undefined>>} */ (keys)[name];
+      if (entry === undefined) continue;
+
+      const key = storageKey(name);
+      const held = await readArea(entry.area, key);
+      if (!held.ok) return;
+      if (!('data' in held) || held.data === undefined) continue;
+
+      let next;
+      try {
+        next = migration[name](held.data);
+      } catch {
+        return;
+      }
+      if (next === held.data) continue;
+
+      const written = await writeArea(entry.area, key, next);
+      if (!written.ok) return;
+    }
+
+    const stamped = await writeArea(VERSION_AREA, VERSION_KEY, step);
+    if (!stamped.ok) return;
+  }
 }

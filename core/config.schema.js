@@ -260,10 +260,12 @@ export const keys = Object.freeze(Object.assign(Object.create(null), declared));
  * changing.
  *
  * Nothing here registers or awaits anything. The update event is wired in the
- * service worker by story 2.3, as one line that can be read and removed as a
- * unit, and **no Surface waits on it** -- a read during a migration resolves
- * through the declared default like any other read that finds no value of the
- * declared type.
+ * service worker by story 2.3, as two lines that can be read and removed as a
+ * unit -- an `import` and a registration, because static ESM cannot bind an
+ * import and invoke it in one statement, which is the finding DESIGN.md already
+ * recorded about the shell's two lines. **No Surface waits on it**: a read during
+ * a migration resolves through the declared default like any other read that
+ * finds no value of the declared type.
  *
  * @type {ReadonlyArray<Migration>}
  */
