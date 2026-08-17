@@ -11,6 +11,10 @@
   "side_panel": {
     "default_path": "ui/sidepanel/shell.html"
   },
+  "options_ui": {
+    "page": "ui/options/options.html",
+    "open_in_tab": false
+  },
   "background": {
     "service_worker": "sw.js",
     "type": "module"

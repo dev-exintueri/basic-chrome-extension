@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<!--
+ * @tier required
+ * @chrome-min baseline
+ * @permissions none
+ * @pitfall A field written here writes a key the generator also writes, and neither says so.
+ * @alternative open_in_tab true -- a tab-width page fights nothing and demonstrates no embedding.
+ * @scales-to The form needs a second region -> a nav beside it, not a second document.
+ -->
+<meta charset="utf-8">
+<title>basic-chrome-extension</title>
+
+<!--
+  The options surface. It is embedded inside chrome://extensions (options_ui.page
+  with open_in_tab false), so it inherits its host's chrome and must not fight it.
+
+  THERE IS NO FIELD IN THIS FILE, AND THAT IS THE WHOLE POINT. Every field is
+  produced from core/config.schema.js by options.js. DESIGN.md states the reason
+  as a consequence rather than a preference: no per-key markup exists, so no
+  per-key layout can either. A field hand-written here would be a SECOND
+  declaration of a key that is declared once by design, and the failure it
+  produces is the one core/config.schema.js already names -- two fields writing
+  one storage entry, with nothing raised.
+
+  So the body below is two landmarks and a heading. #fields is the only node
+  options.js writes into; it is present from mount rather than created on demand,
+  because a container inserted at the same moment as its content is the shape
+  EXPERIENCE.md warns is frequently not announced at all.
+
+  The block above takes the ` * ` line prefix all three comment carriers take,
+  and it sits immediately inside <head> before <meta charset> -- the same
+  position ui/sidepanel/shell.html and ui/popup/popup.html put theirs.
+
+  The token sheet is linked first so options.css can override nothing and consume
+  everything. Both stylesheets reach every value through var(--token, <literal>),
+  so this document copied without ui/tokens.css still renders at this
+  repository's light-mode defaults instead of unstyled (AD-25).
+-->
+<link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="options.css">
+<script type="module" src="options.js"></script>
+</head>
+
+<body>
+<main id="options">
+<h1 class="title">basic-chrome-extension</h1>
+
+<!--
+  Written on one line. A formatting newline inside an empty container is a text
+  node, and :empty stops matching it -- the trap story 1.10 paid for on #status
+  and #dialog-root. Nothing here styles #fields:empty today; it is written this
+  way so that adding such a rule later does not silently fail.
+-->
+<div id="fields"></div>
+</main>
+</body>
+</html>
