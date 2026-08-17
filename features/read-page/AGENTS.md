@@ -8,8 +8,8 @@ list with the count in the status line. Nothing here touches the page on mount, 
 navigation, and the extension holds no host permission of any kind.
 
 ## Depends on
-core/errors.js, core/logger.js, core/messaging.js, core/panel.js, core/render.js, core/storage.js,
-core/tabs.js
+core/config.js, core/config.schema.js, core/errors.js, core/logger.js, core/messaging.js,
+core/panel.js, core/render.js, core/storage.js, core/tabs.js
 
 ## Copy procedure
 

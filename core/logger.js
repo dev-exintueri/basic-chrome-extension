@@ -40,7 +40,7 @@
  * cross-lifetime race to defend against and no lock here.
  *
  * **Cost when it is off.** The Developer Mode flag is cached in module scope,
- * read once at load and refreshed by a subscription through `core/storage.js`.
+ * read once at load and refreshed by a subscription through `core/config.js`.
  * It is never read per call, because this is the hottest path in the repository.
  * With the flag off `log()` does no storage and no messaging work at all. A
  * change delivered while the load-time read is still in flight wins over it: the
@@ -58,9 +58,10 @@
  * `storage.session`, and the reason it lives there.
  */
 
+import { get as readConfig, subscribe as watchConfig } from './config.js';
 import { makeError, shown } from './errors.js';
 import { LOG_ACTION, SURFACES, request, setTracer } from './messaging.js';
-import { get, set, subscribe } from './storage.js';
+import { get, set } from './storage.js';
 
 /** @typedef {(typeof SURFACES)[number]} Surface */
 /** @typedef {import('./messaging.js').Meta} Meta */
@@ -100,12 +101,15 @@ const MESSAGE_LIMIT = 1000;
 const FIELD_LIMIT = 200;
 
 /**
- * Read directly from `local` because `core/config.js` does not exist yet. When
- * it does, this read moves behind it and the default below stops being declared
- * in two places. `local` is the area DESIGN.md gives machine-local flags.
+ * The declared name of the Developer Mode flag, read through `core/config.js`.
+ *
+ * Its type, its default, its storage area and the `cfg:` prefix its storage key
+ * carries are all declared in `core/config.schema.js` and resolved by
+ * `core/config.js`; none of them is written down here. Until this story that
+ * default lived in two files at once, which is the drift FR-17 exists to
+ * prevent.
  */
-const DEV_MODE_KEY = 'cfg:dev-mode';
-const DEV_MODE_DEFAULT = false;
+const DEV_MODE = 'dev-mode';
 
 const REJECTED_ENTRY = 'The log entry did not match the record shape and was not stored.';
 
@@ -117,7 +121,14 @@ const REJECTED_ENTRY = 'The log entry did not match the record shape and was not
  */
 const IS_SERVICE_WORKER = globalThis.constructor?.name === 'ServiceWorkerGlobalScope';
 
-let devMode = DEV_MODE_DEFAULT;
+/**
+ * Off until the load-time read answers. This is not a second declaration of the
+ * default: it is what the flag reads as until `core/config.js` resolves, which
+ * is two storage round trips and therefore milliseconds rather than an instant.
+ * `emit()` below waits on `seeded` rather than trusting this value, so no entry
+ * is lost to the window.
+ */
+let devMode = false;
 let seedSettled = false;
 
 /**
@@ -133,23 +144,34 @@ let chain = Promise.resolve();
  * The load-time read of the flag. Deliberately **not** awaited at module scope:
  * a module service worker that top-level-awaits a `chrome.*` promise never
  * finishes evaluating, and every event it was registered for stops arriving.
+ *
+ * The call is deferred by one microtask for a second reason with the same
+ * consequence. `config.get` validates **synchronously** -- an undeclared name is
+ * a `TypeError` at the call site, by design -- and this call site is module
+ * scope. A schema that lost this key would abort evaluation of this file, and
+ * through `sw.js` the whole service worker, rather than falling back to the mode
+ * being off. Deferring turns that into a rejection the handler below absorbs.
  */
-const seeded = get('local', DEV_MODE_KEY).then(
-  (result) => {
-    // Only if nothing newer has arrived. A change event delivered while this
-    // read was in flight carries the current value; this result carries the
-    // value from before the write, and letting it land last would turn the mode
-    // back off for the whole worker lifetime with the flag reading true in
-    // storage the entire time.
-    if (!seedSettled) devMode = result.ok && 'data' in result && result.data === true;
-    seedSettled = true;
-  },
-  () => {
-    seedSettled = true;
-  },
-);
+const seeded = Promise.resolve()
+  .then(() => readConfig(DEV_MODE))
+  .then(
+    (value) => {
+      // Only if nothing newer has arrived. A change event delivered while this
+      // read was in flight carries the current value; this result carries the
+      // value from before the write, and letting it land last would turn the
+      // mode back off for the whole worker lifetime with the flag reading true
+      // in storage the entire time. The read is now two storage round trips
+      // rather than one -- administrator policy, then the user area -- which
+      // widens the window this guard exists for rather than narrowing it.
+      if (!seedSettled) devMode = value === true;
+      seedSettled = true;
+    },
+    () => {
+      seedSettled = true;
+    },
+  );
 
-subscribe('local', DEV_MODE_KEY, (value) => {
+watchConfig(DEV_MODE, (value) => {
   devMode = value === true;
   seedSettled = true;
 });
