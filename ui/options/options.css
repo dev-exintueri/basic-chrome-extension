@@ -1,0 +1,182 @@
+/*
+ * @tier required
+ * @chrome-min baseline
+ * @permissions none
+ * @pitfall A var() inside a token fallback drops the whole declaration where no sheet exists.
+ * @alternative Styling the generated classes from tokens.css -- that sheet must apply nothing.
+ * @scales-to A second page-shaped surface appears -> promote this chrome to ui/page.css.
+ */
+
+/* The options surface's own chrome, and nothing else.
+ *
+ * EVERY VALUE REACHES A TOKEN THROUGH var(--token, <literal>), and the literal
+ * is that token's DESIGN.md light-mode value. A copy of this directory without
+ * ui/tokens.css renders at this repository's light-mode defaults rather than
+ * unstyled (AD-25). The seven type roles carry their FULL font stack in the
+ * fallback and no var() inside it: an unresolvable var() anywhere in a value is
+ * invalid at computed-value time and the WHOLE declaration is dropped, which
+ * ui/tokens.css measured as 30px Georgia instead of 13px system-ui.
+ *
+ * color-scheme IS NOT DECORATION HERE, AND IT MATTERS MORE THAN IT DID IN THE
+ * PANEL. The one control this surface ships today is a NATIVE checkbox. Without
+ * this declaration Chrome paints native widgets light while the tokens go dark,
+ * so the box stays white on a dark card -- readable, and visibly a half-applied
+ * theme. A token sheet cannot carry this: it is a property, not a custom
+ * property, and ui/tokens.css applies nothing.
+ *
+ * THERE IS NO @media IN THIS FILE. Both themes come from ui/tokens.css's single
+ * dark block, and the layout has no breakpoint: DESIGN.md fixes one centred
+ * column at 560 px maximum and a max-width needs no query to hold at any width.
+ *
+ * :focus, NEVER :focus-visible. DESIGN.md's focus ring is never conditional, and
+ * :focus-visible would suppress it for a pointer user on a checkbox -- which is
+ * exactly the control a keyboard user reaches first here.
+ */
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--surface, #FFFFFF);
+  color: var(--text, #1B1F24);
+  font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+/* The column. box-sizing is not a nicety: a 24 px padding outside the 560 px
+ * would make the rendered column 608 px, and DESIGN.md's number is the column.
+ * Story 1.10 shipped a 41 px header against a specified 40 for the same reason. */
+#options {
+  box-sizing: border-box;
+  max-width: var(--options-column, 560px);
+  margin: 0 auto;
+  padding: var(--options-gutter, 24px);
+}
+
+#options > .title {
+  font: var(--type-title, 600 15px/1.35 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  margin: 0 0 var(--space-4, 16px);
+}
+
+/* A grouped card per section. DESIGN.md assigns radius-md to exactly this, and a
+ * hairline plus a tonal step rather than a shadow -- the one shadow token in the
+ * system belongs to the dialog. */
+#fields > .section {
+  border: 1px solid var(--border, #DCE0E5);
+  border-radius: var(--radius-md, 6px);
+  padding: var(--space-4, 16px);
+  margin: 0 0 var(--space-4, 16px);
+}
+
+#fields > .section:last-child {
+  margin-bottom: 0;
+}
+
+#fields > .section > .section-label {
+  font: var(--type-section-label, 600 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  letter-spacing: var(--type-section-label-tracking, 0.06em);
+  text-transform: uppercase;
+  color: var(--text-muted, #5A636D);
+  margin: 0 0 var(--space-3, 12px);
+}
+
+/* One field per row, at any width. */
+#fields .field {
+  margin: 0 0 var(--space-4, 16px);
+}
+
+#fields .field:last-child {
+  margin-bottom: 0;
+}
+
+/* The label sits ABOVE the control and is <label for>-bound. Placeholder text is
+ * never a label -- and no declaration carries one to use as a label anyway. */
+#fields .field > label {
+  display: block;
+  color: var(--text-muted, #5A636D);
+  margin: 0 0 var(--space-1, 4px);
+}
+
+#fields .field > .input {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: var(--control-height, 28px);
+  padding: 0 var(--space-2, 8px);
+  border: 1px solid var(--border-strong, #BFC6CD);
+  border-radius: var(--radius, 4px);
+  background: var(--surface, #FFFFFF);
+  color: var(--text, #1B1F24);
+  font: var(--type-body, 400 13px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+}
+
+#fields .field > .input::placeholder {
+  color: var(--text-faint, #697079);
+}
+
+/* A checkbox's label is its NAME, not a caption, so it sits beside the control
+ * rather than above it. DESIGN.md specifies no checkbox component at all -- the
+ * native control, its border-strong outline and the shared ring are the whole of
+ * what the design system says, and this file does not invent the rest. Nothing
+ * here is circular: DESIGN.md reserves that for the capability-matrix dot. */
+#fields .field.switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+/* The message stays BENEATH even here. Without this the error slot is a third
+ * flex item and lands beside the label, which is the one arrangement
+ * DESIGN.md rules out by naming the position: directly beneath. */
+#fields .field.switch > .field-error {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+
+#fields .field.switch > label {
+  display: inline;
+  margin: 0;
+  color: var(--text, #1B1F24);
+}
+
+#fields .field.switch > .toggle {
+  accent-color: var(--accent, #1D4ED8);
+  margin: 0;
+}
+
+/* Invalid is the border AND the message beneath it. Never the border alone, and
+ * never the message alone: the border keys off aria-invalid so the drawn state
+ * and the announced state cannot drift apart, and the message is a live slot
+ * present from mount rather than a node inserted with its text.
+ *
+ * THE RING IS NOT PART OF THIS. It stays accent, always: DESIGN.md makes it the
+ * single focus signal everywhere and says the border does not change colour on
+ * focus -- so recolouring the outline on an invalid control would make the one
+ * unconditional signal in the system conditional after all.
+ *
+ * THE TEXT INPUT ONLY, and that is a limit rather than an omission. A native
+ * checkbox's border-color is not reliably drawn by any UA, so a rule for it would
+ * be a claim no computed style can settle; the checkbox carries aria-invalid and
+ * the message, which are the two halves that are actually observable. DESIGN.md
+ * specifies no checkbox component to appeal to either way. */
+#fields .field > .input[aria-invalid='true'] {
+  border-color: var(--danger, #B3261E);
+}
+
+#fields .field > .field-error {
+  font: var(--type-meta, 400 11px/1.4 system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif);
+  color: var(--danger, #B3261E);
+  margin: var(--space-1, 4px) 0 0;
+}
+
+#fields .field > .field-error:empty {
+  display: none;
+}
+
+/* The ring, on everything focusable, in both themes, unconditionally. */
+#options :focus {
+  outline: 2px solid var(--accent, #1D4ED8);
+  outline-offset: 1px;
+}
