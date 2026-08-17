@@ -261,11 +261,15 @@ export const keys = Object.freeze(Object.assign(Object.create(null), declared));
  *
  * Nothing here registers or awaits anything. The update event is wired in the
  * service worker by story 2.3, as two lines that can be read and removed as a
- * unit -- an `import` and a registration, because static ESM cannot bind an
- * import and invoke it in one statement, which is the finding DESIGN.md already
- * recorded about the shell's two lines. **No Surface waits on it**: a read during
- * a migration resolves through the declared default like any other read that
- * finds no value of the declared type.
+ * unit -- an `import` and a registration, because in a worker the one-line forms
+ * all need dynamic `import()` and that is disallowed on
+ * `ServiceWorkerGlobalScope`. **No Surface waits on it**, and the reason is worth
+ * stating once rather than three times in three files: a read taken during a
+ * migration resolves through whatever the store holds, and the declared default
+ * only when that value does not match its declared type. **A migration that keeps
+ * the type is therefore read as the answer, old shape or new** -- which is the
+ * half of the defence that does not hold, and `v => v + 1` above is exactly that
+ * shape. `core/config.js` is where the whole account lives.
  *
  * @type {ReadonlyArray<Migration>}
  */

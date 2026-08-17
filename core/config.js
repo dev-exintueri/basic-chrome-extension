@@ -32,6 +32,12 @@
  * not win **and does not shadow the user's value either**: it is skipped, and
  * resolution continues.
  *
+ * **Three functions read and two write.** `get`, `set` and `subscribe` are the
+ * vocabulary a Surface sees; `migrate` is the second writer, it runs from the
+ * service worker on `chrome.runtime.onInstalled`, and **nothing serialises it
+ * against `set`**. Its own documentation names the window that makes a lost write
+ * likely rather than theoretical.
+ *
  * **`get` returns a value, never a `Result`, and never `undefined`.** Every path
  * that could report a failure already has the correct answer to return, so
  * reporting one would force every caller to invent a second default. The cost is
@@ -49,8 +55,10 @@
  * other read. **A migration that keeps the type is not caught** -- a unit, a
  * format, or a meaning changing within `boolean` or `string` passes the gate and
  * is returned as the answer, with nothing raised. `core/config.schema.js`'s own
- * worked example, `v => v + 1`, is exactly that shape. Story 2.3 owns the runner
- * and inherits the residue.
+ * worked example, `v => v + 1`, is exactly that shape. The runner is `migrate` at
+ * the end of this file, and its documentation carries the rest of the residue --
+ * including the `managed` tier, which it cannot migrate and which outranks
+ * whatever it does migrate.
  *
  * **A third one is live and has no tag either.** The register's *assuming the
  * service worker persists* applies to the pending-write map below: it is module
@@ -157,15 +165,40 @@ const POLICY_AREA = 'managed';
 const VERSION_KEY = 'core:schema-version';
 
 /**
- * **`local`, and this is the load-bearing half of the decision.**
+ * Every area a declared key lives in, and therefore every area that carries its
+ * own copy of `VERSION_KEY`. **One stamp per area, not one per store.**
  *
- * A synced version tells a second machine that migrations it has never run are
- * already done. Its values stay at the old shape, the version says otherwise,
- * and every later read answers from a shape nothing will fix -- a wrong answer
- * with nothing raised. A version describes the state of one store, and `local`
- * is the only area whose scope is one store.
+ * An earlier version of this file kept a single stamp in `local`, reasoning that
+ * a synced version tells a second machine that migrations it has never run are
+ * already done. That direction is real. The reasoning was still wrong, because
+ * it assumed the values are all in one store and `keys` permits `area: 'sync'`:
+ * machine A migrates the `sync` value, stamps its own **`local`** version, and
+ * `sync` carries the migrated value to B. B updates later, reads a `local`
+ * version of 0, applies the same migration to the already-migrated value, and
+ * syncs the doubly-applied result back to A. Both machines are wrong, the type
+ * never changes, and nothing raises. Idempotence is the only thing that would
+ * have saved it, and `Migration`'s own worked example `v => v + 1` is not.
+ *
+ * A stamp per area closes both directions, because the stamp then travels
+ * exactly as far as the values it describes.
+ *
+ * **The half that is still open**, since a version stamped per area invites the
+ * assumption it is now airtight: `sync` does not promise to deliver two writes in
+ * the order they were made, so B can receive A's new stamp before A's migrated
+ * value. B then skips a migration whose value has not arrived yet, and the
+ * read-time type gate is the only thing between that and a wrong answer -- which
+ * catches a type change and nothing else.
+ *
+ * **Derived from `keys` rather than written down.** A literal list would be a
+ * second declaration of where configuration lives and would go stale the first
+ * time a key declares a different area. `managed` cannot appear: it is not one of
+ * the schema's user areas, it is read-only, and `migrate` cannot touch it.
+ *
+ * @type {ReadonlyArray<ConfigKey['area']>}
  */
-const VERSION_AREA = 'local';
+const STAMPED_AREAS = Object.freeze([
+  ...new Set(Object.values(keys).map((entry) => /** @type {ConfigKey} */ (entry).area)),
+]);
 
 /** A store nobody has written is at version 0, which is what a fresh install is. */
 const FRESH = 0;
@@ -516,110 +549,238 @@ export function subscribe(name, fn) {
 }
 
 /**
- * Read the version the store's values are shaped for.
+ * Read the version one area's values are shaped for.
  *
  * Absent means `FRESH`, because a store nobody has written and a store that has
  * run every migration are the same arithmetic rather than two cases -- the
- * schema says so where it declares `version`. Anything else that is not a whole
- * number in `[0, current]` is a store this code does not understand: not a
- * failure to report, but not a starting point either.
+ * schema says so where it declares `version`. Anything that is not a whole
+ * number is a store this code does not understand: not a failure to report, but
+ * not a starting point either.
  *
+ * **`Number.isInteger` is that check, and no mutation control can redden it.**
+ * `typeof NaN === 'number'` and `NaN` compares false against every bound, so
+ * without this line `NaN` reaches a loop whose first comparison is false and
+ * which runs zero steps; `2.5` reaches `migrations[2.5]`, which is `undefined`,
+ * and the run stops there. **Every unusable version converges on the same
+ * outcome -- run nothing, write nothing** -- so removing this line changes no
+ * observable behaviour today. It is here because the sentence above is the
+ * contract, and because that convergence is a property of the loop below rather
+ * than of the idea.
+ *
+ * @param {ConfigKey['area']} area
  * @returns {Promise<number | null>} The version, or `null` if it is unusable.
  */
-function storedVersion() {
-  return readArea(VERSION_AREA, VERSION_KEY).then((result) => {
+function storedVersion(area) {
+  return readArea(area, VERSION_KEY).then((result) => {
     if (!result.ok) return null;
     if (!('data' in result) || result.data === undefined) return FRESH;
-    return typeof result.data === 'number' ? result.data : null;
+    return Number.isInteger(result.data) ? /** @type {number} */ (result.data) : null;
   });
 }
 
 /**
- * Bring the store's values up to the schema's `version`.
+ * Record, in every stamped area, that a store nobody has migrated is already at
+ * the current version.
  *
- * Wired to `chrome.runtime.onInstalled` in `sw.js`, which is the only caller.
- * Two lines there, no state here: the worker is terminated after roughly 30 s
- * idle, so an interrupted run has to be resumable from what is in storage and
- * from nothing else.
+ * **This is the whole of the `install` path, and an earlier version of this file
+ * got it wrong on an argument that is true only of an empty store.** That
+ * argument was: a fresh store is at `FRESH` by absence, so stamping it buys
+ * nothing. It buys nothing *at that instant*. The moment the user writes a
+ * setting, the store holds a value written by version *C* code while the stamp
+ * says 0 -- and the next update to *C*+1 walks steps 1 … *C*+1 over values that
+ * never had the old shape. **Idempotence does not help**: it says `f(f(x))` is
+ * `f(x)`, and the hazard is `f1` applied to `f5(x)`.
  *
- * **Only `update` runs anything.** `install` has nothing to migrate -- a fresh
- * store is at `FRESH` by absence, and stamping it would buy nothing.
- * `chrome_update` and `shared_module_update` do not change this extension's
- * stored shapes, and re-running a migration on them would be a second
- * application of a function only documented to be safe under one.
+ * **`FRESH` is not stamped**, because a stamp of 0 says exactly what absence
+ * already says, and writing it would spend a write on every install for nothing.
+ *
+ * **An area already holding a stamp is left alone.** Chrome fires `install` for
+ * a fresh install, where there is nothing to leave alone -- but `migrate` is
+ * exported and the reason is an argument, so overwriting a real version with the
+ * current one is a way to skip every migration in silence, and the read costs one
+ * round trip to make it unwriteable.
+ *
+ * **A failed write leaves the hazard open with nothing to report it**, and
+ * `onInstalled` does not fire again for the same install, so nothing retries.
+ * That is the honest consequence of the "never rejects, never logs" contract and
+ * it is recorded as a question rather than papered over.
+ */
+async function stampFreshStore() {
+  const current = version;
+  if (current === FRESH) return;
+
+  for (const area of STAMPED_AREAS) {
+    const held = await readArea(area, VERSION_KEY);
+    if (!held.ok) return;
+    if ('data' in held && held.data !== undefined) continue;
+
+    const stamped = await writeArea(area, VERSION_KEY, current);
+    if (!stamped.ok) return;
+  }
+}
+
+/**
+ * Walk each stamped area from its own stored version up to the schema's.
+ *
+ * **The outer loop is over areas, not over steps.** Each area's keys are
+ * migrated against the stamp living in that same area, which is what
+ * `STAMPED_AREAS` explains at length; a step naming keys in two areas is applied
+ * once per area and stamped once per area, and the two proceed independently.
+ *
+ * **Any storage failure ends the whole run, including the areas not reached
+ * yet.** One rule rather than two: a per-area recovery would leave some areas
+ * stamped and some not, with nothing anywhere saying which -- and the version is
+ * deliberately raised only after a step's writes have landed, so stopping is
+ * always resumable and continuing is not always correct.
+ */
+async function runMigrations() {
+  const current = version;
+
+  for (const area of STAMPED_AREAS) {
+    const stored = await storedVersion(area);
+    if (stored === null || stored < FRESH || stored > current) return;
+
+    // There is deliberately no `stored === current` early return. The loop's own
+    // bounds already run zero steps in that case, and a branch that cannot change
+    // an outcome reads as load-bearing to the next person -- the gate proved this
+    // one was not by mutating it away and watching nothing move.
+    for (let step = stored + 1; step <= current; step += 1) {
+      const migration = migrations[step - 1];
+      if (migration === undefined) return;
+
+      for (const name of Object.keys(migration)) {
+        const entry = /** @type {Readonly<Record<string, ConfigKey | undefined>>} */ (keys)[name];
+        if (entry === undefined) continue;
+        if (entry.area !== area) continue;
+
+        const key = storageKey(name);
+        const held = await readArea(entry.area, key);
+        if (!held.ok) return;
+        if (!('data' in held) || held.data === undefined) continue;
+
+        const next = migration[name](held.data);
+
+        // The declared type, checked before the write and not after. `set`
+        // refuses a wrong-typed value at its call site; these writes do not go
+        // through `set`, so without this line a migration is the one writer that
+        // can store a value every later read then refuses -- answering the
+        // declared default forever, with the version stamped as complete. It
+        // also catches the three shapes a migration reaches by accident: a
+        // forgotten `return` (`undefined`), a promise from an `async` migration
+        // (`object`, which Chrome stores as `{}`), and `v => v + 1` on a string
+        // (`NaN`, a `number` no declared type admits).
+        if (typeof next !== entry.type) return;
+
+        // An unchanged value is not written. Identity is the right comparison
+        // because the check above has already refused everything that is not
+        // `boolean` or `string`.
+        if (next === held.data) continue;
+
+        const written = await writeArea(entry.area, key, next);
+        if (!written.ok) return;
+      }
+
+      const stamped = await writeArea(area, VERSION_KEY, step);
+      if (!stamped.ok) return;
+    }
+  }
+}
+
+/**
+ * Bring the store's values up to the schema's `version`, or stamp a fresh store
+ * as already being at it.
+ *
+ * Wired to `chrome.runtime.onInstalled` in `sw.js`. Two lines there, no state
+ * here: the worker is terminated after roughly 30 s idle, so an interrupted run
+ * has to be resumable from what is in storage and from nothing else. **`sw.js` is
+ * not the only possible caller** -- this is exported, nothing enforces one
+ * caller, and the argument is validated below precisely because a second one can
+ * reach it.
+ *
+ * **Two reasons do something, and they do different things.** `update` runs the
+ * walk. `install` stamps the current version into every stamped area that has
+ * none, which is what stops the *next* update replaying migrations 1 … *C* over
+ * values that were written by version *C* code -- see `stampFreshStore`, whose
+ * documentation carries the argument this file previously got wrong.
+ * `chrome_update` and `shared_module_update` do nothing: Chrome updating itself
+ * does not change this extension's stored shapes, and re-running a migration on
+ * them would be a second application of a function only documented to be safe
+ * under one.
  *
  * **`details.previousVersion` is not the previous schema version.** It is the
  * extension's previous `manifest.json` semver, a different number with a
  * different owner, and starting from it would migrate from `'1.0.0'` to a step
- * count. The starting point comes from `VERSION_KEY` and from nowhere else.
+ * count. The starting point comes from `VERSION_KEY`, in the area whose keys are
+ * being migrated, and from nowhere else.
  *
  * **The version is raised once per step, after that step's writes have landed.**
  * A run interrupted between two steps therefore resumes at the step it did not
- * finish rather than skipping it, and a write that fails stops the run and
- * leaves the version alone so the next update event retries. Both of those mean
- * a migration can be applied to its own output, which is why `Migration`
- * requires each function to be idempotent -- a requirement nothing can check,
- * because the functions do not exist yet.
+ * finish rather than skipping it. That still means a migration can be applied to
+ * its own output, which is why `Migration` requires each function to be
+ * idempotent -- a requirement nothing can check, because the functions do not
+ * exist yet.
+ *
+ * **What "resumes" does not mean: nothing retries.**
+ * `chrome.runtime.onInstalled` fires once per real update and is **not**
+ * re-dispatched when the worker restarts, so a run that stops -- on a failed
+ * write, on a migration returning the wrong type, or on the worker being
+ * terminated mid-run, which nothing here holds it alive against -- leaves the
+ * store half-migrated **until the next release**. The stamp is what makes that
+ * survivable rather than what fixes it.
  *
  * **A key a migration names but the store does not hold is skipped.** Applying a
  * function to an absent value invents one: the schema's own worked example,
  * `v => v + 1`, turns `undefined` into `NaN`, which is a `number` no declared
  * type admits and which would then resolve to the declared default forever.
  *
- * **Nothing escapes.** A migration that throws, or a storage failure, ends the
- * run quietly. This file cannot log -- `core/logger.js` imports it, and closing
- * that cycle resolves one side to a partially initialised namespace -- and an
- * unhandled rejection inside a service worker is reported nowhere a maintainer
- * will look. The consequence is stated rather than hidden: **a migration that
- * fails leaves the store un-migrated with no announcement**, and the only reason
- * that is survivable is that every read is gated by the declared type, so an
- * un-migrated value of the wrong type resolves to its default.
+ * **Nothing escapes, and the aborts are indistinguishable from each other and
+ * from success.** A migration that throws, a storage failure, a wrong-typed
+ * result, an unusable stored version and a completed run all settle the same
+ * `Promise<void>`. That is deliberate -- a report shape would be a fifth
+ * vocabulary with no consumer -- and it is stated rather than implied, because
+ * the caller that would most want to tell them apart is a harness. This file
+ * cannot log either: `core/logger.js` imports it, and closing that cycle resolves
+ * one side to a partially initialised namespace. So **a migration that fails
+ * leaves the store un-migrated with no announcement**, and the only reason that
+ * is survivable is the read-time type gate.
  *
- * **What the read-time gate does not cover.** It catches a migration that
- * changes a value's *type*. A unit, a format, or a meaning changing within
- * `boolean` or `string` passes it and is returned as the answer. That half is
- * undefended and belongs to whoever writes the first migration.
+ * **Three things the runner cannot reach, all of which can end in a wrong answer
+ * with nothing raised.** (1) The gate it relies on catches a migration that
+ * changes a value's *type*; a unit, a format or a meaning changing within
+ * `boolean` or `string` passes it and is returned as the answer. (2) The
+ * `managed` tier is read-only, so a policy value written in the old shape stays
+ * in the old shape, passes the type gate, and **wins resolution** on every
+ * machine under that policy, forever. (3) `set` and this function are two writers
+ * of the same key with no mutual exclusion between them, and the `sync` debounce
+ * is a 750 ms window in which a `set` can land between a read here and the write
+ * that follows it -- after which the migrated *old* value silently wins and
+ * `set`'s caller has already been told `{ ok: true }`.
  *
  * @param {InstalledDetails} [details] The event's own argument.
- * @returns {Promise<void>} Settles when the run is over. Never rejects.
+ * @returns {Promise<void>} Settles when the run is over. Never rejects, whatever
+ *   `details` is.
  */
 export async function migrate(details) {
-  if (details === undefined || details.reason !== 'update') return;
+  // `typeof` first, so `undefined` and `'update'` are both refused; `null` after
+  // it, because `typeof null === 'object'` and reading `.reason` off it throws.
+  // AC5 asks only for a missing argument to be safe; a caller that can pass no
+  // argument can pass the wrong one.
+  if (typeof details !== 'object' || details === null) return;
 
-  const current = version;
-  const stored = await storedVersion();
-  if (stored === null || stored < FRESH || stored > current) return;
+  const reason = details.reason;
+  if (reason !== 'install' && reason !== 'update') return;
 
-  // There is deliberately no `stored === current` early return. The loop's own
-  // bounds already run zero steps in that case, and a branch that cannot change
-  // an outcome reads as load-bearing to the next person -- the gate proved this
-  // one was not by mutating it away and watching nothing move.
-  for (let step = stored + 1; step <= current; step += 1) {
-    const migration = migrations[step - 1];
-    if (migration === undefined) return;
-
-    for (const name of Object.keys(migration)) {
-      const entry = /** @type {Readonly<Record<string, ConfigKey | undefined>>} */ (keys)[name];
-      if (entry === undefined) continue;
-
-      const key = storageKey(name);
-      const held = await readArea(entry.area, key);
-      if (!held.ok) return;
-      if (!('data' in held) || held.data === undefined) continue;
-
-      let next;
-      try {
-        next = migration[name](held.data);
-      } catch {
-        return;
-      }
-      if (next === held.data) continue;
-
-      const written = await writeArea(entry.area, key, next);
-      if (!written.ok) return;
-    }
-
-    const stamped = await writeArea(VERSION_AREA, VERSION_KEY, step);
-    if (!stamped.ok) return;
+  try {
+    if (reason === 'install') await stampFreshStore();
+    else await runMigrations();
+  } catch {
+    // The reads and the writes are inside this, not only the migration call. Both
+    // reach `core/storage.js`, which reduces runtime failures to a `Result` but
+    // still throws **synchronously** from `assertArea`, `assertKey` and
+    // `assertStorable` -- so a declared name outside the key grammar, or a value
+    // structured-clone cannot carry, arrives here rather than as a `Result`. So
+    // does `Object.keys(migrations[i])` when an entry is `null`, which the
+    // `undefined` check above does not catch. Without this, `migrate` rejects,
+    // and its contract says it does not.
   }
 }
