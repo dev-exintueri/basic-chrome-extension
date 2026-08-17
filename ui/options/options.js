@@ -3,7 +3,7 @@
  * @tier required
  * @chrome-min baseline
  * @permissions none
- * @pitfall A write per keystroke exceeds the sync rate cap and fails the write, not the interface.
+ * @pitfall input writes per keystroke; local is undebounced and a write returns to move the caret.
  * @alternative A Save button committing every field -- a failed write becomes a batch's outcome.
  * @scales-to Keys outgrow one screen -> a section field on each entry, and a form that groups.
  */
@@ -18,8 +18,24 @@
  * fields: `type`, `default`, `area`, `label`. `core/config.schema.js` states that
  * the absence of a fifth is deliberate -- no description, no help text, no
  * section name, no pattern, no minimum. So a field is a label and a control, and
- * nothing else. The UX mockup draws per-field help text and a `sync`/`local`
- * badge; neither has a source in the schema, and DESIGN.md wins over any mock.
+ * nothing else. The UX mockup draws per-field help text, which has no source in
+ * the schema at all, and a per-key `sync`/`local` badge, which is refused for a
+ * different reason: `area` **is** declared, so the badge is drawable, and
+ * DESIGN.md closes badges to two uses -- tier and Chrome floor -- and says they
+ * are never coloured. The fact reaches the surface as the section it groups
+ * under. An earlier version of this paragraph said the badge had no source
+ * either; it does, and the reason it is refused is the closure, not the schema.
+ *
+ * **Two things DESIGN.md specifies that this file cannot produce, named here
+ * because a reader should not have to discover them.** A secret field is
+ * `type="password"` with a reveal toggle, and a declaration has no field that
+ * marks one -- so a token or key declared today renders as plain text. And a
+ * namespaced name (`find-text.match-limit`, the shape the schema says to expect)
+ * yields `id="cfg-find-text.match-limit"`, which is a valid IDREF -- so `label`
+ * and `aria-describedby` hold -- but is not selectable as `#cfg-find-text.match-limit`,
+ * because a CSS parser reads the dot as a class. Nothing here selects by id;
+ * anything that does needs `CSS.escape`, which `core/render.js` already carries.
+ * Both are entries for the fifth-field question, not defects of this file.
  *
  * **Two controls, because two are specified.** `core/config.schema.js` closes the
  * declared type vocabulary at `boolean` and `string` for exactly this reason: the
@@ -33,14 +49,34 @@
  * a key never touches it and no layout is written per key. Section order is the
  * order areas first appear in `keys`, so the schema's author owns it.
  *
- * **It binds `change`, never `input`, and that is the pitfall above rather than a
- * preference.** `change` on a text input fires when the field is left; `input`
- * fires per keystroke, and a write per keystroke is what exceeds the `sync`
- * write-rate cap. Measured on Chrome 151: `QUOTA_BYTES_PER_ITEM` is 8192 and
- * `MAX_WRITE_OPERATIONS_PER_MINUTE` is 120, both reported by the platform rather
- * than read off a document. The failure lands on the *write*, and the interface
- * goes on looking correct -- which is why the control below is told what happened
- * instead of assuming it succeeded.
+ * **It binds `change`, never `input`, and the reason is not the one this file
+ * used to give.** The earlier claim was that a write per keystroke exceeds the
+ * `sync` write-rate cap. **That is false, and `core/config.js` is where it is
+ * false:** `set` debounces every `sync` write inside itself and re-arms the timer
+ * on each call (`core/config.js:397-441`), so sixty keystrokes into a `sync`
+ * field produce **one** write 750 ms after typing stops. A rule whose stated
+ * mechanism does not reproduce is a rule the next reader is right to ignore, so
+ * the two mechanisms that do reproduce are stated instead:
+ *
+ * 1. **A `local` key is not debounced at all.** `set` returns `writeArea`
+ *    directly for any area that is not `sync`, so `input` would store every
+ *    intermediate keystroke -- and every stored value is delivered to every other
+ *    realm, which means a half-typed endpoint becomes the configuration the
+ *    worker and the panel read.
+ * 2. **Every landed write comes back through `subscribe` to this same field.**
+ *    The delivery calls `reflect`, which assigns the control's value -- so writing
+ *    while the user types means rewriting the field while the user types. That is
+ *    the caret loss `list()` is refused for, arriving through the property
+ *    instead of through the node, and it is why `reflect` now refuses a focused
+ *    text input.
+ *
+ * The quota numbers stand and were measured on Chrome 151 --
+ * `QUOTA_BYTES_PER_ITEM` is 8192, `MAX_WRITE_OPERATIONS_PER_MINUTE` is 120, both
+ * reported by the platform rather than read off a document. The 8192 is what
+ * makes a failed write reachable at all; the 120 is not what `change` protects.
+ * The failure lands on the *write*, and the interface goes on looking correct --
+ * which is why the control below is told what happened instead of assuming it
+ * succeeded.
  *
  * **Every change re-reads, and the re-read is the contract.** EXPERIENCE.md
  * requires a control to reflect the **stored** value and a failed write to
@@ -71,7 +107,7 @@
 
 import { get, set, subscribe } from '../../core/config.js';
 import { keys } from '../../core/config.schema.js';
-import { el } from '../../core/render.js';
+import { clear, el } from '../../core/render.js';
 
 /** @typedef {import('../../core/config.schema.js').ConfigKey} ConfigKey */
 /** @typedef {keyof typeof keys} Name */
@@ -85,9 +121,20 @@ import { el } from '../../core/render.js';
  * The raw area name was the alternative and it lost: `SYNCED` and `LOCAL` set in
  * the section-label role read as machine facts, and DESIGN.md reserves monospace
  * for those. These say what the grouping means to the person reading it.
+ *
+ * **`@satisfies` and not `@type`, because the difference is the whole claim.** A
+ * `@type` on an object literal is an *assertion*: measured, `tsc` accepts a
+ * two-entry map against `Record<'local'|'sync'|'session', string>` in silence,
+ * because a narrower object is assignable to a wider one and a cast asks nothing
+ * further. `@satisfies` checks the literal against the type without widening it
+ * and reports `TS1360: Property 'session' is missing`. So with `@type` the
+ * sentence above -- a third entry is impossible while `UserArea` stays closed --
+ * was enforced by nothing: widening `UserArea` gave `AREA_LABELS[area] ===
+ * undefined`, `el()` skips an `undefined` child, and the section rendered with an
+ * empty unlabelled heading. Now it is a compile error.
  */
 const AREA_LABELS = Object.freeze(
-  /** @type {Readonly<Record<ConfigKey['area'], string>>} */ ({
+  /** @satisfies {Readonly<Record<ConfigKey['area'], string>>} */ ({
     local: 'This machine',
     sync: 'Synced',
   }),
@@ -99,13 +146,27 @@ const FIELDS_ID = 'fields';
 /**
  * Write the live state of one control from a resolved value.
  *
- * The two casts are the only ones in this file and they are where the declared
- * type stops being expressible. `Value<K>` narrows to `boolean` only when `K` is
- * a literal key; inside a walk over `Object.keys()` it is `string`, so the type
+ * **The two casts here are where the declared type stops being expressible** --
+ * they are not the only casts in the file, and an earlier version of this
+ * sentence said they were. `Value<K>` narrows to `boolean` only when `K` is a
+ * literal key; inside a walk over `Object.keys()` it is `string`, so the type
  * resolves to `string` for every key including the boolean ones. The branch below
  * tests `entry.type`, which is the same fact `core/config.js` gates every read
  * and write on, so the narrowing is sound at runtime and merely unavailable to
- * the checker.
+ * the checker. The file's other casts are `AREA_LABELS`'s target type, the
+ * `HTMLInputElement` on `el()`'s return, `byArea`'s `Name[]`, and the `never` on
+ * `set`'s value -- that last one is the widest and the argument for it is in the
+ * listener, not here.
+ *
+ * **A focused text input is left alone, and that is a decision with a cost.** The
+ * value arrives from a subscription or from the re-read after a write, and
+ * assigning `.value` to a field somebody is typing in discards the edit and moves
+ * the caret -- the same loss `list()` is refused for. So a text input that holds
+ * focus is not overwritten. The cost is that such a field can be stale for as
+ * long as the user keeps it focused; it re-reads on the user's own `change`,
+ * which is the next thing that happens when they leave it. A CHECKBOX is
+ * overwritten even while focused, because there is no caret to lose and AC7's
+ * revert of a failed toggle must land on the control the user just clicked.
  *
  * @param {HTMLInputElement} control
  * @param {ConfigKey} entry
@@ -115,6 +176,9 @@ const FIELDS_ID = 'fields';
 function reflect(control, entry, value) {
   if (entry.type === 'boolean') {
     control.checked = /** @type {boolean} */ (value);
+    return;
+  }
+  if (control === document.activeElement) {
     return;
   }
   control.value = /** @type {string} */ (value);
@@ -131,18 +195,27 @@ function reflect(control, entry, value) {
  * travels as the error's `cause` and is not put on screen -- story 1.8's rule,
  * and a surface that rendered it would break on a Chrome that reworded it.
  *
+ * **An empty message clears, and does not count as a message.** `core/errors.js`
+ * builds no empty sentence today, so this is an invariant rather than a live
+ * case: without it a `''` would set `aria-invalid` while `:empty` kept the slot
+ * collapsed, which is the border-without-a-message state the paragraph above
+ * says is ruled out.
+ *
  * @param {HTMLInputElement} control
  * @param {HTMLElement} slot
  * @param {string | null} message
  * @returns {void}
  */
 function report(control, slot, message) {
-  if (message === null) {
+  if (message === null || message === '') {
     control.removeAttribute('aria-invalid');
-    // textContent = '' removes the children, so :empty matches again and the
-    // slot collapses. Assigning a space would leave a text node behind and the
-    // empty box would stand -- the trap story 1.10 paid for on #status.
-    slot.textContent = '';
+    // clear() removes the children, so :empty matches again and the slot's
+    // margin collapses. Assigning a space would leave a text node behind and the
+    // gap would stand -- the trap story 1.10 paid for on #status. This is
+    // core/render.js's third export doing the one job it has here; the
+    // equivalent `slot.textContent = ''` said the same thing in this file's own
+    // words rather than in the repository's.
+    clear(slot);
     return;
   }
   control.setAttribute('aria-invalid', 'true');
@@ -151,6 +224,18 @@ function report(control, slot, message) {
 
 /**
  * Build one field, wire it, and start it.
+ *
+ * **Three readers write this one control and they are ordered by a counter.**
+ * The seed read, the re-read after a write, and every subscription delivery all
+ * resolve on their own schedule, and each is two storage round trips
+ * (`core/config.js` resolves policy then the user's area). Without an order a
+ * slow older resolution lands after a newer one and the control shows a value the
+ * store does not hold -- permanently, because `core/config.js` de-duplicates a
+ * change back to the value it already delivered, so nothing arrives to correct
+ * it. `core/logger.js:155-177` carries the same guard for the same reason and
+ * says the two-round-trip resolution is what widens the window; `core/config.js`
+ * gives each SUBSCRIPTION a generation counter but nothing coordinates a
+ * subscription with this file's own reads. `latest` is that coordination.
  *
  * @param {Name} name A name declared in `core/config.schema.js`.
  * @param {ConfigKey} entry Its declaration.
@@ -173,7 +258,15 @@ function fieldFor(name, entry) {
   // The accessible name is the declaration's label, bound rather than repeated.
   // `el()` takes the attribute `for`, never the property `htmlFor`.
   const label = el('label', { for: id }, entry.label);
-  const slot = el('p', { class: 'field-error', id: slotId });
+
+  // A LIVE REGION, present from mount and populated on change, which is
+  // EXPERIENCE.md's pattern and what `shell.html` does for #status and #banner.
+  // `aria-describedby` alone was not enough and that was a real defect: it is
+  // read when focus ARRIVES, and `change` on a text input fires on blur, so the
+  // one moment a failure is written is the moment focus has just left. `status`
+  // and not `alert`: a failed write is not an interruption, and `ui/popup/`
+  // records where that line is drawn.
+  const slot = el('p', { class: 'field-error', id: slotId, role: 'status' });
 
   // A checkbox's label is its name, so it follows the control; a text input's
   // label is a caption, so it sits above. Neither affects the tab order -- the
@@ -184,7 +277,31 @@ function fieldFor(name, entry) {
     toggle ? [control, label, slot] : [label, control, slot],
   );
 
+  // The declared default is written NOW, synchronously, before any read is
+  // issued. It costs no storage and it is the value the store will hold unless
+  // something has changed it, so a key declared `true` no longer paints `false`
+  // and then flips when the seed read lands.
+  reflect(control, entry, entry.default);
+
+  // Which resolution is allowed to win. Every event that supersedes an earlier
+  // one takes the next number, and a resolution carrying an older number is
+  // dropped rather than drawn.
+  let latest = 0;
+
+  /**
+   * @param {number} generation
+   * @param {boolean | string} value
+   * @returns {void}
+   */
+  const apply = (generation, value) => {
+    if (generation < latest) {
+      return;
+    }
+    reflect(control, entry, value);
+  };
+
   control.addEventListener('change', () => {
+    const generation = (latest += 1);
     const pending = toggle ? control.checked : control.value;
     // `set` throws synchronously for a value of the wrong declared type. It
     // cannot happen from here: a checkbox yields the boolean and a text input
@@ -195,17 +312,20 @@ function fieldFor(name, entry) {
         report(control, slot, result.ok ? null : result.error.message);
         return get(name);
       })
-      .then((stored) => reflect(control, entry, stored));
+      .then((stored) => apply(generation, stored));
   });
 
   // No initial value is delivered by `subscribe` -- deliberately, so the seed
-  // read is explicit and visible here rather than hidden in the kernel.
-  get(name).then((stored) => reflect(control, entry, stored));
+  // read is explicit and visible here rather than hidden in the kernel. It
+  // carries generation 0, so anything that happens while it is in flight wins.
+  get(name).then((stored) => apply(0, stored));
 
   // A change written anywhere else -- another options page, a migration, a
   // policy arriving -- lands here without a reload and without polling. There
   // is no interval and no repeated read in this file.
-  subscribe(name, (value) => reflect(control, entry, value));
+  subscribe(name, (value) => {
+    apply((latest += 1), value);
+  });
 
   return field;
 }
@@ -253,9 +373,15 @@ function mount(container) {
     return;
   }
   for (const [area, names] of byArea()) {
+    // The section is NAMED by its label, and the naming is what makes the
+    // grouping reach a screen reader. `core/config.schema.js` calls the
+    // local/sync distinction the only difference a user can feel; a bare
+    // <section> is not exposed as a region and a <p> carries no heading
+    // semantics, so without this the distinction was drawn and not conveyed.
+    const labelId = `section-${area}`;
     container.append(
-      el('section', { class: 'section' }, [
-        el('p', { class: 'section-label' }, AREA_LABELS[area]),
+      el('section', { class: 'section', 'aria-labelledby': labelId }, [
+        el('p', { class: 'section-label', id: labelId }, AREA_LABELS[area]),
         ...names.map((name) => fieldFor(name, keys[name])),
       ]),
     );

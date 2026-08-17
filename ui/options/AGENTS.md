@@ -20,8 +20,13 @@ core/config.js, core/config.schema.js, core/storage.js, core/errors.js, core/ren
    deliberately does not repeat it. One fact, one owner.
 
    `options.js` binds `change` and never `input`. That is not a style choice and reverting it is a
-   defect: a write per keystroke is what exceeds the synced write-rate cap, and the cap fails the
-   *write* while the interface goes on looking correct.
+   defect — but **not for the reason this step used to give.** It said a write per keystroke exceeds
+   the synced write-rate cap. It does not: `core/config.js` debounces every `sync` write inside `set`
+   and re-arms the timer per call, so a whole typed word produces one write. The two reasons that do
+   hold: a **`local`** key is not debounced at all, so `input` stores every intermediate keystroke and
+   every stored value reaches every other realm; and every landed write returns through `subscribe` to
+   the field that made it, so writing while the user types means rewriting the field while the user
+   types. `options.js` carries the measurement.
 
 2. Copy the Core Modules named under "Depends on" to `core/`.
 
@@ -34,11 +39,17 @@ core/config.js, core/config.schema.js, core/storage.js, core/errors.js, core/ren
    **`core/storage.js` is what declares the `storage` permission**, so its own fragment is where that
    cost is stated; nothing in this directory declares it, because nothing here calls a `chrome.*` API.
 
-   Optionally also copy `ui/tokens.css` to `ui/` and link it from `options.html`. Without it the page
-   renders at the `var()` fallback values written into `options.css`, which are this repository's
-   light-mode defaults. **Take the sheet if your users may be in dark mode.** `options.css` declares
-   `color-scheme: light dark` and always ships, and the one control here today is a **native
-   checkbox** — so without the token sheet Chrome paints the box dark while the colours stay light.
+   Also copy `ui/tokens.css` to `ui/` and link it from `options.html` — **or make one edit, stated
+   below.** Without the sheet the page renders at the `var()` fallback values written into
+   `options.css`, which are this repository's light-mode defaults, and that half is by design (AD-25).
+   The half that is **not** optional is `color-scheme`: `options.css` declares `color-scheme: light
+   dark` and always ships, and the one control here today is a **native checkbox**, so on a
+   dark-preference machine with no token sheet Chrome paints the box dark while every colour around it
+   stays light. That is a half-applied theme — the exact defect the declaration exists to prevent,
+   arriving from the other side.
+
+   So: **take the sheet, or change that one line to `color-scheme: light`.** Keeping neither is the
+   only wrong answer, and the comment at the top of `options.css` says the same thing.
 
 3. Merge this Manifest Fragment (array keys union and de-duplicate; `minimum_chrome_version`
    resolves to the maximum; any other scalar collision is an error):

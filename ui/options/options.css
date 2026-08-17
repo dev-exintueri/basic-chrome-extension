@@ -24,6 +24,15 @@
  * theme. A token sheet cannot carry this: it is a property, not a custom
  * property, and ui/tokens.css applies nothing.
  *
+ * AND IT CUTS BOTH WAYS, WHICH THE FIRST VERSION OF THIS COMMENT DID NOT SAY.
+ * Every literal below is a LIGHT value, so a copy of this directory WITHOUT
+ * ui/tokens.css and a user who prefers dark gets the same half-applied theme in
+ * mirror image: Chrome paints the box dark because this line says both schemes
+ * are supported, while the surface around it stays light. AD-25 makes the
+ * fallbacks a working page, not a themed one. A consumer taking this directory
+ * either takes the token sheet or changes this line to `color-scheme: light`;
+ * ui/options/AGENTS.md states that as a step rather than as a preference.
+ *
  * THERE IS NO @media IN THIS FILE. Both themes come from ui/tokens.css's single
  * dark block, and the layout has no breakpoint: DESIGN.md fixes one centred
  * column at 560 px maximum and a max-width needs no query to hold at any width.
@@ -120,11 +129,15 @@ body {
  * native control, its border-strong outline and the shared ring are the whole of
  * what the design system says, and this file does not invent the rest. Nothing
  * here is circular: DESIGN.md reserves that for the capability-matrix dot. */
+/* NO `gap` HERE, and the reason is the error slot. The slot is a live region and
+ * must stay in the accessibility tree even while empty (see the collapse rule
+ * below), so it is a third flex item at all times -- and a row `gap` would then
+ * add 8 px of empty space under every checkbox that has no failure. The one gap
+ * this row needs is between the box and its label, so the label carries it. */
 #fields .field.switch {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2, 8px);
 }
 
 /* The message stays BENEATH even here. Without this the error slot is a third
@@ -132,17 +145,19 @@ body {
  * DESIGN.md rules out by naming the position: directly beneath. */
 #fields .field.switch > .field-error {
   flex-basis: 100%;
-  margin-top: 0;
 }
 
 #fields .field.switch > label {
   display: inline;
-  margin: 0;
+  margin: 0 0 0 var(--space-2, 8px);
   color: var(--text, #1B1F24);
 }
 
+/* NO `accent-color`. Q7 granted this control "the native control, unstyled beyond
+ * its border colour and the shared focus ring", and an accent fill is neither --
+ * DESIGN.md also closes accent to one use per visible region, so a checked accent
+ * box beside its accent focus ring is two. The box is Chrome's. */
 #fields .field.switch > .toggle {
-  accent-color: var(--accent, #1D4ED8);
   margin: 0;
 }
 
@@ -171,8 +186,16 @@ body {
   margin: var(--space-1, 4px) 0 0;
 }
 
+/* COLLAPSED, NOT REMOVED, and the difference is whether a screen reader ever
+ * hears the failure. `display: none` takes the node out of the accessibility
+ * tree, so text inserted into a live region that is simultaneously un-hidden is
+ * frequently never announced -- which is why `ui/sidepanel/shell.css` collapses
+ * #status with `height: 0` and not with `display: none`. An empty block has no
+ * line box and therefore no height already; the margin is the only thing to take
+ * away. This rule replaces a `display: none` that silently defeated the
+ * `role="status"` on the slot. */
 #fields .field > .field-error:empty {
-  display: none;
+  margin-top: 0;
 }
 
 /* The ring, on everything focusable, in both themes, unconditionally. */
