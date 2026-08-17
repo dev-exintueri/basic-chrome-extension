@@ -3,7 +3,7 @@ name: Neutral Instrument
 description: Behaviour, information architecture, state semantics, interaction, and accessibility for the Chrome Extension MV3 Reference Starter Repo.
 status: final
 created: 2026-08-08
-updated: 2026-08-08
+updated: 2026-08-17
 sources:
   - _bmad-output/planning-artifacts/prds/prd-basic-chrome-extension-2026-08-08/prd.md
   - _bmad-output/planning-artifacts/prds/prd-basic-chrome-extension-2026-08-08/addendum.md
@@ -104,7 +104,7 @@ Behavioural. Visual specs live in `DESIGN.md.Components`.
 | Log stream | Developer Mode | Appends at the bottom, auto-scrolls only when already scrolled to the bottom. Replays the ring buffer on connect. |
 | Inspector row | Developer Mode | Values are editable in place; a write goes through `core/storage.js` like any other write and appears in the log stream. |
 | Progress bar | Model download only | Determinate or absent. Never a spinner. |
-| Toggle | Options, Developer Mode | Writes on change, debounced. Reflects the stored value, not the pending one — a failed write must visibly revert. |
+| Toggle | Options, Developer Mode | Writes on change. The 750 ms debounce applies to `storage.sync` only, so a `local` key such as Developer Mode is written immediately. Reflects the stored value, not the pending one — a failed write must visibly revert. |
 
 ## State Patterns
 
