@@ -7,7 +7,7 @@ name: every field comes from a declaration, so adding a setting is one entry in 
 edit here. It is also the surface the side panel's header opens.
 
 ## Depends on
-core/config.js, core/config.schema.js, core/storage.js, core/errors.js, core/render.js
+core/config.js, core/config.schema.js, core/render.js
 
 ## Copy procedure
 

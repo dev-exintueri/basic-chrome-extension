@@ -42,6 +42,30 @@ The handover carries five things:
 **The test: if a fresh session cannot start from the handover alone, it is
 incomplete.** A line naming the next story number does not satisfy this rule.
 
+## Red before green: what counts as evidence, from story 2.5 onward
+
+A Product Owner ruled on this on 2026-08-18, closing story 2.4's Q9-e. It binds
+every story after 2.4 and is written here because a ruling that outlives its
+story does not belong in that story's file.
+
+**A gate must be able to redden one assertion at a time.** "Run the whole gate
+against a tree with the subject removed" is not per-assertion red evidence: a
+gate built that way refuses to run at all and reports *"none of them measured"*,
+which is honest but is a statement about the gate, not about any assertion. Build
+gates so that a single assertion can be shown to fail against an otherwise
+complete tree.
+
+**Two things this ruling does not do.** It is **not retroactive** — no existing
+gate is to be rebuilt for it, and story 2.4's own evidence stands: its 88
+controls, each naming the assertions it reddens, were accepted as red evidence
+and did not block completion. And it does not replace controls. A control that
+reddens a named assertion remains the unit of evidence; what changes is that a
+story may no longer offer *only* subject-removal as its red run.
+
+The failure this prevents is the one this repository keeps paying for: a gate
+that is green because it measured nothing is indistinguishable from a gate that
+is green because the code is right, and only a per-assertion red separates them.
+
 ## Amending DESIGN.md and EXPERIENCE.md
 
 Both carry `status: final`, and both may still be revised **until story 7.5 tags
