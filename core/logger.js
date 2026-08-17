@@ -123,9 +123,10 @@ const IS_SERVICE_WORKER = globalThis.constructor?.name === 'ServiceWorkerGlobalS
 
 /**
  * Off until the load-time read answers. This is not a second declaration of the
- * default: it is what the flag reads as for the handful of microseconds before
- * `core/config.js` resolves, and `emit()` below waits for that read rather than
- * trusting this value, so no entry is lost to it.
+ * default: it is what the flag reads as until `core/config.js` resolves, which
+ * is two storage round trips and therefore milliseconds rather than an instant.
+ * `emit()` below waits on `seeded` rather than trusting this value, so no entry
+ * is lost to the window.
  */
 let devMode = false;
 let seedSettled = false;
@@ -143,23 +144,32 @@ let chain = Promise.resolve();
  * The load-time read of the flag. Deliberately **not** awaited at module scope:
  * a module service worker that top-level-awaits a `chrome.*` promise never
  * finishes evaluating, and every event it was registered for stops arriving.
+ *
+ * The call is deferred by one microtask for a second reason with the same
+ * consequence. `config.get` validates **synchronously** -- an undeclared name is
+ * a `TypeError` at the call site, by design -- and this call site is module
+ * scope. A schema that lost this key would abort evaluation of this file, and
+ * through `sw.js` the whole service worker, rather than falling back to the mode
+ * being off. Deferring turns that into a rejection the handler below absorbs.
  */
-const seeded = readConfig(DEV_MODE).then(
-  (value) => {
-    // Only if nothing newer has arrived. A change event delivered while this
-    // read was in flight carries the current value; this result carries the
-    // value from before the write, and letting it land last would turn the mode
-    // back off for the whole worker lifetime with the flag reading true in
-    // storage the entire time. The read is now two storage round trips rather
-    // than one -- administrator policy, then the user area -- which widens the
-    // window this guard exists for rather than narrowing it.
-    if (!seedSettled) devMode = value === true;
-    seedSettled = true;
-  },
-  () => {
-    seedSettled = true;
-  },
-);
+const seeded = Promise.resolve()
+  .then(() => readConfig(DEV_MODE))
+  .then(
+    (value) => {
+      // Only if nothing newer has arrived. A change event delivered while this
+      // read was in flight carries the current value; this result carries the
+      // value from before the write, and letting it land last would turn the
+      // mode back off for the whole worker lifetime with the flag reading true
+      // in storage the entire time. The read is now two storage round trips
+      // rather than one -- administrator policy, then the user area -- which
+      // widens the window this guard exists for rather than narrowing it.
+      if (!seedSettled) devMode = value === true;
+      seedSettled = true;
+    },
+    () => {
+      seedSettled = true;
+    },
+  );
 
 watchConfig(DEV_MODE, (value) => {
   devMode = value === true;
