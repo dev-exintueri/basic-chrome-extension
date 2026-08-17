@@ -32,7 +32,12 @@ The handover carries five things:
    **not** measure. "It loads" is not "it parsed"; a clean type-check with no
    control run is not evidence.
 5. **What is out of bounds** — files outside the task's scope, and actions that
-   need separate approval (push, merge).
+   need separate approval (push, merge). **Exception: when a
+   `running-unattended-sessions` decision panel is running, the panel decides
+   push and merge** — but only after `merge-gate.sh` passes, and a failed gate
+   ends it without a vote. With no panel there is nobody to decide, so the
+   approval requirement stands unchanged. Say in the handover which of the two
+   applied, because the next session cannot tell from the commits alone.
 
 **The test: if a fresh session cannot start from the handover alone, it is
 incomplete.** A line naming the next story number does not satisfy this rule.
